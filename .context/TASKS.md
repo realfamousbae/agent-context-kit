@@ -4,6 +4,7 @@
 <!-- - [ ] T-YYYYMMDD-ii-n Title — @alice/claude — since 2026-10-22 — area: `src/upload/`, `tests/test_upload*` -->
 
 ## Now <!-- ctx:now -->
+- [ ] T-20261022-rf-14 Redesign: context at session entry, exit and checkpoints only — @realfamousbae/claude — since 2026-10-22 — area: `template/`, `install.sh`, `snippets/`, `tests/`, `docs/`, `README.md`, `BOOTSTRAP.md`, `.context/`, `.claude/`, `.codex/`, `.githooks/`, `AGENTS.md`
 
 ## Next <!-- ctx:next -->
 - [ ] T-20261022-rf-13 Token overhead for cheap subscriptions: measure per-session cost of the kit in the pilot (brief, claim/entry/finish calls, Stop reminder) and decide on a lean profile (smaller brief budgets, shorter AGENTS block)
