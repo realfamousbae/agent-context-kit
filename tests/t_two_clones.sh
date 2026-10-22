@@ -32,12 +32,13 @@ not_contains "answered question leaves bob's brief" "$(ctx "$C" brief)" "May I t
 
 # bob works on a branch; alice sees his entry and claim before any merge
 git -C "$C" checkout -q -b feature/export
-ctx "$C" claim --new "Export" --area "src/export/" --no-push >/dev/null
+check "bob claims on his branch" ctx "$C" claim --new "Export" --area "src/export/" --no-push
 CTX_AGENT=codex ctx "$C" entry --model m >/dev/null 2>&1; fill_draft "$C" codex >/dev/null
 mkdir -p "$C/src/export"; echo x > "$C/src/export/a.py"
 commit_all "$C" "export"
 check "bob pushes his branch" git -C "$C" push -q -u origin feature/export
 out=$(CTX_NO_FETCH=0 CTX_DEBUG=1 ctx "$A" brief 2>&1)
+contains "branch TASKS.md has the claim" "$(git -C "$A" show origin/feature/export:.context/TASKS.md)" "Export — @bob"
 contains "alice fetched bob's branch" "$(git -C "$A" branch -r)" "origin/feature/export"
 contains "alice sees bob's branch entry" "$out" "[branch origin/feature/export]"
 contains "alice sees bob's branch claim" "$out" "Export — @bob/human"
