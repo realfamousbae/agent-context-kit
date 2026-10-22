@@ -2,6 +2,11 @@
 # Rules: no GNU/BSD-only flags, no bashisms except `local`, paths relative to the repo root.
 # shellcheck shell=sh
 
+# Byte semantics everywhere: awk implementations disagree on multibyte characters otherwise
+# (gawk counts characters in UTF-8 locales, mawk and BWK awk count bytes).
+LC_ALL=C
+export LC_ALL
+
 ctx_say() { printf '%s\n' "$*"; }
 ctx_err() { printf 'ctx: %s\n' "$*" >&2; }
 ctx_die() { ctx_err "$*"; exit 1; }

@@ -64,7 +64,7 @@ mkdir -p "$R/lib"; echo x > "$R/lib/a.py"; git -C "$R" add lib/a.py
 out=$(ctx "$R" check --pre-commit 2>&1); rc=$?
 equals "pre-commit: claim overlap does not block" "$rc" "0"
 contains "pre-commit: claim overlap warns" "$out" "claimed by @bob"
-git -C "$R" reset -q; rm -rf "$R/lib"
+git -C "$R" reset -q; rm -rf "${R:?}/lib"
 
 # --soft (Claude Code Stop hook)
 soft() { printf '%s' "$1" | (cd "$R" && CTX_AGENT=claude "$CTX_SHELL" .context/bin/ctx check --soft) 2>&1; echo "rc=$?"; }

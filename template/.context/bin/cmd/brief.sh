@@ -257,5 +257,7 @@ brief_main() {
 	return 0
 }
 
-( brief_main ) 2>/dev/null || echo "[ctx brief stopped early — read .context/ files directly]"
+# CTX_DEBUG=1 keeps stderr for diagnosing; normally hook output must stay clean.
+if [ "${CTX_DEBUG:-}" = 1 ]; then ( set -x; brief_main ) || echo "[ctx brief stopped early — read .context/ files directly]"
+else ( brief_main ) 2>/dev/null || echo "[ctx brief stopped early — read .context/ files directly]"; fi
 exit 0

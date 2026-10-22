@@ -6,7 +6,8 @@ commit_all "$A" "install kit"
 git clone -q -c core.autocrlf=true "$A" "$T_TMP/win"
 W="$T_TMP/win"
 git -C "$W" config ctx.author bob; git -C "$W" config ctx.initials bb
-cr() { LC_ALL=C awk '/\r$/ { n++ } END { print n + 0 }' "$1"; }
+# count CR bytes (not awk: MSYS gawk reads files in text mode and drops CRs)
+cr() { tr -dc '\r' < "$1" | wc -c | tr -d ' '; }
 equals "ctx has LF" "$(cr "$W/.context/bin/ctx")" "0"
 equals "ctx-lib.sh has LF" "$(cr "$W/.context/bin/ctx-lib.sh")" "0"
 equals "cmd/brief.sh has LF" "$(cr "$W/.context/bin/cmd/brief.sh")" "0"
