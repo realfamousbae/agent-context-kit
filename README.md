@@ -36,7 +36,7 @@ sh /path/to/agent-context-kit/install.sh --author bob --initials bo
 ```
 
 ```powershell
-& C:\path\to\agent-context-kit\install.ps1 --author bob --initials bo
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\path\to\agent-context-kit\install.ps1 --author bob --initials bo
 ```
 
 If the project already has a hand-made agent journal, the installer stops and points to [MIGRATION.md](MIGRATION.md).

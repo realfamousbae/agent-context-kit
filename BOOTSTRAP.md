@@ -8,16 +8,20 @@ https://github.com/realfamousbae/agent-context-kit". Talk to the user in their l
 Clone the kit into a temporary directory (not inside the project), then run the installer from the project root:
 
 ```sh
-git clone --depth 1 https://github.com/realfamousbae/agent-context-kit.git "$TMPDIR/agent-context-kit"
-sh "$TMPDIR/agent-context-kit/install.sh" --author <handle> --initials <2-3 letters> --language <en|ru>
+kit=$(mktemp -d)/agent-context-kit
+git clone --depth 1 https://github.com/realfamousbae/agent-context-kit.git "$kit"
+sh "$kit/install.sh" --author <handle> --initials <2-3 letters> --language <en|ru>
 ```
 
 Windows PowerShell (Git for Windows must be installed; the script finds its bash):
 
 ```powershell
-git clone --depth 1 https://github.com/realfamousbae/agent-context-kit.git $env:TEMP\agent-context-kit
-& $env:TEMP\agent-context-kit\install.ps1 --author <handle> --initials <xx> --language <en|ru>
+$kit = Join-Path $env:TEMP ("agent-context-kit-" + [guid]::NewGuid().ToString('N'))
+git clone --depth 1 https://github.com/realfamousbae/agent-context-kit.git $kit
+powershell -NoProfile -ExecutionPolicy Bypass -File "$kit\install.ps1" --author <handle> --initials <xx> --language <en|ru>
 ```
+
+(`-ExecutionPolicy Bypass` because Windows PowerShell refuses to run downloaded scripts under the default policy.)
 
 - `--author`: a short handle for the human (ask if unsure; never derive it from an email). `--initials`: 2–3 letters,
   unique in the project — the installer refuses initials registered by someone else in `.context/AUTHORS`.

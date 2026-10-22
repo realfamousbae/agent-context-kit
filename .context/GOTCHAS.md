@@ -13,3 +13,4 @@
 - G-20261022-rf-8 · jq: `A + B as $x | …` binds as `A + (B as $x | …)` — parenthesise `(A + B) as $x` (realfamousbae/claude)
 - G-20261022-rf-9 · `.context/bin/` in this repo is an installed copy of `template/.context/bin/` — editing only one of them silently diverges; edit the template and run `sh install.sh --update` (realfamousbae/claude)
 - G-20261022-rf-10 · The PROTOCOL.md example `T-20261022-aa-1` once matched "today" and shifted `ctx id` — ctx_next_id skips PROTOCOL.md, bin/ and templates/; keep examples out of record files (realfamousbae/claude)
+- G-20261022-rf-11 · `codex exec` 0.163 did not run the project SessionStart hook from .codex/hooks.json (even with --dangerously-bypass-hook-trust and the project trusted via -c); Codex read the context only because AGENTS.md says to run ctx brief — keep AGENTS.md as the primary path for Codex (realfamousbae/claude, T-20261022-rf-9)

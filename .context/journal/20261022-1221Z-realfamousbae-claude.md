@@ -14,6 +14,8 @@ status: done
 - Plan vs docs: Claude Code caps hook context at 10,000 chars (D-20261022-rf-2); PreCompact output never reaches the model (D-20261022-rf-3); Codex has hooks now, needs `/hooks` trust and JSON from Stop (D-20261022-rf-6); Codex sandboxes keep `.git` read-only and may forbid temp files (D-20261022-rf-7).
 - CI on three OSes found five portability bugs no local run showed: G-20261022-rf-2, -3, -5, -6 and the bash 3.2 `case` parse bug (G-20261022-rf-1).
 - A live `codex exec -s read-only` run exposed the empty brief (mktemp); now covered by a test with an unwritable tree and TMPDIR.
+- Codex project hooks were not seen firing in `codex exec` (G-20261022-rf-11); AGENTS.md alone got Codex to run the brief.
+- BOOTSTRAP commands: `$TMPDIR` is usually unset on Linux and Windows PowerShell blocks `& install.ps1` by default — now `mktemp -d` and `-ExecutionPolicy Bypass -File`.
 
 ## Decisions <!-- ctx:decisions -->
 - D-20261022-rf-1 … D-20261022-rf-13

@@ -33,7 +33,15 @@ Source: https://developers.openai.com/codex/llms-full.txt (hooks, AGENTS.md, san
 | `read-only` sandbox: nothing is writable, not even temp directories | `ctx brief` uses no temporary files |
 | On Windows the native agent runs commands in PowerShell | AGENTS.md gives `.context\bin\ctx.cmd brief`; `ctx.ps1` is the PowerShell wrapper |
 
-Verified by hand on macOS: `claude -p` in a fresh repository retold the other participant's entry, claim, gotcha
-and the question addressed to it from the SessionStart hook alone; `codex exec -s read-only` followed AGENTS.md,
-ran `ctx brief` and did the same. Codex hooks on Windows (`commandWindows`) are exercised in CI through
-PowerShell, but not inside a real Codex session.
+## What is verified, and how
+
+- Every hook command is run by `tests/t_agents.sh` exactly as installed, with hook JSON on stdin (startup, compact,
+  worktree `cwd`, Stop with and without `stop_hook_active`), on Ubuntu, macOS and Windows (Git Bash with a
+  `C:\…` project dir). Codex `commandWindows` runs through `cmd /c` + PowerShell in Windows CI.
+- Live on macOS: `claude -p` in a fresh repository retold the other participant's entry, claim, gotcha and the
+  question addressed to it from the SessionStart hook alone.
+- Live on macOS: `codex exec -s read-only` (0.163.0) followed AGENTS.md, ran `ctx brief` itself and retold the same.
+  The project's `.codex/hooks.json` did **not** inject the brief in `codex exec`, even with
+  `--dangerously-bypass-hook-trust` and the project marked trusted; why is not known yet (T-20261022-rf-9).
+  Until then AGENTS.md is what makes Codex read the context.
+- Not run live: a real `/compact` (only simulated with `source: compact`), Claude Code and Codex sessions on Windows.

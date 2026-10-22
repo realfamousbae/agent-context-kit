@@ -8,7 +8,7 @@
 ## Next <!-- ctx:next -->
 - [ ] T-20261022-rf-7 Phase 6: pilot on a real two-person project for 2 weeks (install in both clones, then ctx status, review 10 entries, short survey)
 - [ ] T-20261022-rf-8 Phase 7: retro against the success criteria; decide on layer 2 (MCP server) or layer 3 (live sync)
-- [ ] T-20261022-rf-9 Verify Codex hooks inside a real Codex session on Windows (commandWindows is only exercised from PowerShell in CI)
+- [ ] T-20261022-rf-9 Find out why .codex/hooks.json does not inject the brief in `codex exec` 0.163 (macOS), then verify Codex hooks live on Windows (commandWindows is only exercised from PowerShell in CI)
 - [ ] T-20261022-rf-10 Decide whether /ctx-* commands should become skills (D-20261022-rf-13)
 - [ ] T-20261022-rf-11 Open question from the plan: keep .context/ in the main branch (current) or move to a separate branch if history noise hurts
 
