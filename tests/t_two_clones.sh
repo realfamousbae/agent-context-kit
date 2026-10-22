@@ -33,7 +33,7 @@ not_contains "answered question leaves bob's brief" "$(ctx "$C" brief)" "May I t
 # bob works on a branch; alice sees his entry and claim before any merge
 git -C "$C" checkout -q -b feature/export
 check "bob claims on his branch" ctx "$C" claim --new "Export" --area "src/export/" --no-push
-CTX_AGENT=codex ctx "$C" entry --model m >/dev/null 2>&1; fill_draft "$C" codex >/dev/null
+(CTX_AGENT=codex ctx "$C" entry --model m >/dev/null 2>&1); fill_draft "$C" codex >/dev/null
 mkdir -p "$C/src/export"; echo x > "$C/src/export/a.py"
 commit_all "$C" "export"
 check "bob pushes his branch" git -C "$C" push -q -u origin feature/export

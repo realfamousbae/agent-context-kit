@@ -15,7 +15,7 @@ contains "message explains what to do" "$out" "ctx entry --agent"
 contains "message mentions [no-ctx]" "$out" "[no-ctx]"
 
 # draft does not count
-CTX_AGENT=claude ctx "$R" entry --model m >/dev/null 2>&1
+(CTX_AGENT=claude ctx "$R" entry --model m >/dev/null 2>&1)
 d=$(ctx "$R" entry --path --agent claude); git -C "$R" add "$d"
 out=$(git -C "$R" commit -m "add app" 2>&1)
 contains "draft entry rejected" "$out" "still a draft"

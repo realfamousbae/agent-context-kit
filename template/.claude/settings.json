@@ -1,0 +1,28 @@
+{
+  "env": {
+    "CTX_AGENT": "claude"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          { "type": "command", "command": "sh \"$CLAUDE_PROJECT_DIR/.context/bin/ctx\" brief" }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          { "type": "command", "command": "sh \"$CLAUDE_PROJECT_DIR/.context/bin/ctx\" brief --short" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "sh \"$CLAUDE_PROJECT_DIR/.context/bin/ctx\" check --soft" }
+        ]
+      }
+    ]
+  }
+}

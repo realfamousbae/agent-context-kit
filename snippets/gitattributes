@@ -7,4 +7,5 @@
 .context/DECISIONS.md merge=union
 .context/GOTCHAS.md merge=union
 .context/QUESTIONS.md merge=union
+.context/AUTHORS merge=union
 # <<< agent-context-kit

@@ -77,7 +77,7 @@ mkrepo() {
 # install_kit DIR [args...] — run the installer into DIR as identity alice/aa unless overridden.
 install_kit() {
 	_t=$1; shift
-	(cd "$_t" && sh "$KIT_DIR/install.sh" --author alice --initials aa "$@")
+	(cd "$_t" && "$CTX_SHELL" "$KIT_DIR/install.sh" --author alice --initials aa "$@")
 }
 
 # ctx DIR args... — run ctx inside DIR.
@@ -138,3 +138,6 @@ enable_hooks() {
 	chmod +x "$1/.githooks/pre-commit" "$1/.githooks/commit-msg"
 	git -C "$1" config core.hooksPath .githooks
 }
+
+# snapshot DIR — checksum of every file outside .git (to prove a re-run changed nothing).
+snapshot() { (cd "$1" && find . -path ./.git -prune -o -type f -print | sort | while IFS= read -r f; do cksum "$f"; done; git config --local --list | sort); }

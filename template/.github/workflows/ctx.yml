@@ -1,0 +1,20 @@
+# agent-context-kit: report code commits without a journal entry in a pull request.
+# Catches commits made with --no-verify or without the hooks. Report only — it does not block.
+name: ctx
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  journal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Journal check
+        run: |
+          sh .context/bin/ctx check --range "origin/${{ github.base_ref }}..HEAD" | tee -a "$GITHUB_STEP_SUMMARY"

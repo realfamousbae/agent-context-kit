@@ -46,7 +46,7 @@ printf '\n## Modules <!-- ctx:modules -->\n- `src/` — the app\n' >> "$R/.conte
 commit_all "$R" "setup"
 ctx "$R" claim --new "Upload" --area "src/" >/dev/null
 git -C "$R" config ctx.author bob; git -C "$R" config ctx.initials bb
-CTX_AGENT=codex ctx "$R" entry --model m1 >/dev/null 2>&1; fill_draft "$R" codex >/dev/null
+(CTX_AGENT=codex ctx "$R" entry --model m1 >/dev/null 2>&1); fill_draft "$R" codex >/dev/null
 ctx "$R" ask @alice "Why src?" >/dev/null
 ctx "$R" ask @codex "For any codex" >/dev/null
 commit_all "$R" "bob work"
@@ -77,7 +77,7 @@ contains "budget: omitted sections named" "$small" "Omitted to fit the brief bud
 contains "budget: over-budget warning" "$small" "over the 700-byte brief budget"
 
 # --short: draft is shown
-CTX_AGENT=claude ctx "$R" entry --model m2 >/dev/null 2>&1
+(CTX_AGENT=claude ctx "$R" entry --model m2 >/dev/null 2>&1)
 d=$(ctx "$R" entry --path --agent claude)
 printf '%s\n' "- found a thing" >> "$R/$d"
 short=$(CTX_AGENT=claude ctx "$R" brief --short)

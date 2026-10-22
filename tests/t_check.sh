@@ -7,7 +7,7 @@ commit_all "$R" "setup"
 # --staged
 echo a > "$R/app.py"; git -C "$R" add app.py
 check_fails "staged: code without entry rejected" ctx "$R" check --staged
-CTX_AGENT=claude ctx "$R" entry --model m >/dev/null 2>&1
+(CTX_AGENT=claude ctx "$R" entry --model m >/dev/null 2>&1)
 d=$(ctx "$R" entry --path --agent claude); git -C "$R" add "$d"
 out=$(ctx "$R" check --staged 2>&1)
 contains "staged: draft named in the message" "$out" "still a draft"
@@ -76,7 +76,7 @@ contains "soft: reminder exits 2" "$out" "rc=2"
 equals "soft: only once per session" "$(soft '{"session_id":"s1","stop_hook_active":false}')" "rc=0"
 contains "soft: new session reminded again" "$(soft '{"session_id":"s2","stop_hook_active":false}')" "rc=2"
 equals "soft: stop_hook_active → never blocks" "$(soft '{"session_id":"s3", "stop_hook_active": true}')" "rc=0"
-CTX_AGENT=claude ctx "$R" entry --model m >/dev/null 2>&1
+(CTX_AGENT=claude ctx "$R" entry --model m >/dev/null 2>&1)
 ctx "$R" end >/dev/null
 out=$(soft '{"session_id":"s4","stop_hook_active":false}')
 contains "soft: after ctx end, incomplete draft blocks" "$out" "ctx end was declared"
