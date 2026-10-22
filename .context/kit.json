@@ -1,0 +1,19 @@
+{
+  "kit_version": "0.1.0",
+  "language": "en",
+  "brief_budget_bytes": 24000,
+  "brief_short_budget_bytes": 8000,
+  "hook_budget_bytes": 9500,
+  "recent_entries": 5,
+  "compact_threshold_entries": 30,
+  "compact_keep_entries": 10,
+  "claim_stale_days": 3,
+  "push_claims": "ask",
+  "strip_ai_coauthor": true,
+  "remote_branches_max": 20,
+  "status_days": 14,
+  "question_stale_days": 3,
+  "fetch_timeout_seconds": 8,
+  "check_updates": false,
+  "kit_repo": "https://github.com/realfamousbae/agent-context-kit.git"
+}

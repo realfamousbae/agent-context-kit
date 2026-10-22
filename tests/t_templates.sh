@@ -34,4 +34,12 @@ contains "Cyrillic detector works" "$(has_cyr "$KIT_DIR/template/i18n/ru")" "MAP
 bad=$(awk 'NR > 1 && !/^}$/ && !/^  "[a-z_]+": ("[^"]*"|[0-9]+|true|false),?$/' "$T/.context/kit.json")
 equals "kit.json is flat" "$bad" ""
 
+# Dogfooding: the kit repository runs an installed copy of its own scripts; it must match the template.
+if [ -d "$KIT_DIR/.context/bin" ]; then
+	drift=$(cd "$KIT_DIR/template/.context" && find bin PROTOCOL.md -type f | while IFS= read -r f; do
+		[ "$(tr -d '\r' < "$f")" = "$(tr -d '\r' < "$KIT_DIR/.context/$f" 2>/dev/null)" ] || echo "$f"
+	done)
+	equals "dogfood copy of bin/ and PROTOCOL.md matches the template (sh install.sh --update)" "$drift" ""
+fi
+
 finish

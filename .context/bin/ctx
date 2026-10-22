@@ -1,0 +1,42 @@
+#!/bin/sh
+# ctx — entry point of agent-context-kit: ctx <command> [args]. Run `ctx help`.
+# Works when called as `sh .context/bin/ctx …`, `.context/bin/ctx …`, or via ctx.cmd / ctx.ps1 on Windows.
+
+# CTX_SHELL (default sh) is the shell for subcommands; tests use it to run everything under dash or bash.
+CTX_BIN=$(cd "$(dirname "$0")" && pwd)
+export CTX_BIN
+cmd=${1:-help}
+[ $# -gt 0 ] && shift
+
+case $cmd in
+	brief|claim|entry|ask|check|status|compact|config|end|id|migrate)
+		exec "${CTX_SHELL:-sh}" "$CTX_BIN/cmd/$cmd.sh" "$@" ;;
+	version|--version)
+		sed -n 's/.*"kit_version"[ ]*:[ ]*"\([^"]*\)".*/\1/p' "$CTX_BIN/../kit.json" 2>/dev/null ;;
+	help|-h|--help)
+		cat <<'HELP'
+ctx — shared project memory for people and AI agents (agent-context-kit)
+
+  ctx brief [--short] [--budget BYTES] [--no-fetch]   start-of-session summary (never fails)
+  ctx claim T-… --area "path/ glob*"                  claim a task and its files
+  ctx claim --new "Title" --area "…"                  create and claim a task
+  ctx claim --done T-… | --pause T-…                  release a claim
+  ctx entry --agent claude|codex --model ID           create or return your journal draft
+  ctx entry --finish                                  validate the draft and mark it done
+  ctx ask @who "question" [--task T-…]                ask another participant or agent
+  ctx ask --answer Q-… "answer" [--keep-open]         answer (closes with ✅)
+  ctx ask --list                                      open questions
+  ctx id T|D|G|Q                                      next free ID for you today
+  ctx end                                             end-of-session checklist
+  ctx check --staged | --soft | --range A..B          enforcement (hooks, Claude Code Stop, CI)
+  ctx status [--days N]                               bypasses, brief size, stale claims, old questions
+  ctx compact [--apply]                               prepare / perform journal compaction
+  ctx config [KEY [VALUE]]                            read or change .context/kit.json
+  ctx migrate PATH…                                   move a legacy agent journal into .context/
+  ctx version
+
+Rules: .context/PROTOCOL.md
+HELP
+		;;
+	*) echo "ctx: unknown command '$cmd' (try: ctx help)" >&2; exit 2 ;;
+esac

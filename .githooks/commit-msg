@@ -1,0 +1,14 @@
+#!/bin/sh
+# agent-context-kit commit-msg: code needs a finished journal entry in the same commit
+# ([no-ctx] in the message or CTX_SKIP=1 to bypass), AI co-author lines are stripped (strip_ai_coauthor).
+# A previous hook directory (git config ctx.chainHooks) is run afterwards.
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+if [ -f "$root/.context/bin/ctx" ]; then
+	sh "$root/.context/bin/ctx" check --commit-msg "$1" || exit 1
+fi
+prev=$(git config ctx.chainHooks 2>/dev/null)
+if [ -n "$prev" ]; then
+	case $prev in /*|?:*) ;; *) prev="$root/$prev" ;; esac
+	if [ -f "$prev/commit-msg" ]; then sh "$prev/commit-msg" "$@" || exit $?; fi
+fi
+exit 0

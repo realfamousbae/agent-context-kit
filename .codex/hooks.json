@@ -1,0 +1,42 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$(git rev-parse --show-toplevel)/.context/bin/ctx\" brief --hook --format codex --agent codex",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& (Join-Path (git rev-parse --show-toplevel) '.context/bin/ctx.ps1') brief --hook --format codex --agent codex\"",
+            "timeout": 60,
+            "additionalContextLimit": 8000
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$(git rev-parse --show-toplevel)/.context/bin/ctx\" brief --hook --short --format codex --agent codex",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& (Join-Path (git rev-parse --show-toplevel) '.context/bin/ctx.ps1') brief --hook --short --format codex --agent codex\"",
+            "timeout": 60,
+            "additionalContextLimit": 3000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$(git rev-parse --show-toplevel)/.context/bin/ctx\" check --soft --format codex --agent codex",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& (Join-Path (git rev-parse --show-toplevel) '.context/bin/ctx.ps1') check --soft --format codex --agent codex\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

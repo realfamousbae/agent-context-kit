@@ -13,3 +13,14 @@ tests/** text eol=lf
 *.ps1 text eol=crlf
 template/.context/bin/*.cmd text eol=crlf
 template/.context/bin/*.ps1 text eol=crlf
+# >>> agent-context-kit
+.context/** text eol=lf
+.context/bin/*.cmd text eol=crlf
+.context/bin/*.ps1 text eol=crlf
+.githooks/pre-commit text eol=lf
+.githooks/commit-msg text eol=lf
+.context/DECISIONS.md merge=union
+.context/GOTCHAS.md merge=union
+.context/QUESTIONS.md merge=union
+.context/AUTHORS merge=union
+# <<< agent-context-kit

@@ -249,9 +249,12 @@ setup_identity() {
 	git config ctx.author "$a" 2>/dev/null || warn "cannot write git config (read-only .git?): run git config ctx.author $a"
 	git config ctx.initials "$i" 2>/dev/null || true
 	if ! awk -v a="$a" '$1 == a { f = 1 } END { exit !f }' .context/AUTHORS 2>/dev/null; then
-		[ -f .context/AUTHORS ] || printf '# author initials — one line per person, append only (IDs use the initials)\n' > .context/AUTHORS
+		if [ -f .context/AUTHORS ]; then changed ".context/AUTHORS ($a $i)"
+		else
+			printf '# author initials — one line per person, append only (IDs use the initials)\n' > .context/AUTHORS
+			say "  + .context/AUTHORS ($a $i)"
+		fi
 		printf '%s %s\n' "$a" "$i" >> .context/AUTHORS
-		changed ".context/AUTHORS ($a $i)"
 	fi
 	say "Identity: ctx.author=$a, ctx.initials=$i"
 }
