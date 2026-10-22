@@ -1,0 +1,91 @@
+# Shared helpers for kit tests. Sourced by tests/t_*.sh; POSIX sh.
+# shellcheck shell=sh disable=SC2034
+
+set -u
+KIT_DIR=$(cd "$(dirname "$0")/.." && pwd)
+T_TMP=$(mktemp -d 2>/dev/null || { d="${TMPDIR:-/tmp}/ctx-test.$$"; mkdir -p "$d" && echo "$d"; })
+T_PASS=0
+T_FAIL=0
+T_NAME=$(basename "$0" .sh)
+trap 'rm -rf "$T_TMP"' EXIT
+
+# Isolate from the developer's global git config (hooksPath, signing, templates).
+HOME="$T_TMP/home"
+export HOME
+mkdir -p "$HOME"
+cat > "$HOME/.gitconfig" <<CFG
+[user]
+	name = Test User
+	email = test.user@example.invalid
+[init]
+	defaultBranch = main
+[commit]
+	gpgsign = false
+[advice]
+	detachedHead = false
+CFG
+unset CTX_AGENT CTX_MODEL CTX_SKIP GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE 2>/dev/null || true
+CTX_NO_FETCH=1
+export CTX_NO_FETCH
+
+ok() { T_PASS=$((T_PASS + 1)); printf 'ok   %s: %s\n' "$T_NAME" "$1"; }
+not_ok() {
+	T_FAIL=$((T_FAIL + 1))
+	printf 'FAIL %s: %s\n' "$T_NAME" "$1"
+	[ $# -gt 1 ] && printf '%s\n' "$2" | sed 's/^/     | /'
+	return 0
+}
+
+# check "description" cmd args... — passes when the command succeeds.
+check() {
+	_d=$1; shift
+	if _o=$("$@" 2>&1); then ok "$_d"; else not_ok "$_d" "$_o"; fi
+}
+# check_fails "description" cmd args... — passes when the command fails.
+check_fails() {
+	_d=$1; shift
+	if _o=$("$@" 2>&1); then not_ok "$_d" "$_o"; else ok "$_d"; fi
+}
+# contains "description" "haystack" "needle"
+contains() {
+	case $2 in *"$3"*) ok "$1" ;; *) not_ok "$1" "expected to contain: $3
+--- got:
+$2" ;; esac
+}
+not_contains() {
+	case $2 in *"$3"*) not_ok "$1" "expected NOT to contain: $3
+--- got:
+$2" ;; *) ok "$1" ;; esac
+}
+equals() {
+	if [ "$2" = "$3" ]; then ok "$1"; else not_ok "$1" "expected: $3
+--- got:
+$2"; fi
+}
+
+# mkrepo DIR — empty repo with one commit.
+mkrepo() {
+	mkdir -p "$1"
+	git -C "$1" init -q
+	git -C "$1" symbolic-ref HEAD refs/heads/main
+	printf '# Demo\n' > "$1/README.md"
+	git -C "$1" add README.md
+	git -C "$1" commit -q -m "initial"
+}
+
+# install_kit DIR [args...] — run the installer into DIR as identity alice/aa unless overridden.
+install_kit() {
+	_t=$1; shift
+	(cd "$_t" && sh "$KIT_DIR/install.sh" --author alice --initials aa "$@")
+}
+
+# ctx DIR args... — run ctx inside DIR.
+ctx() {
+	_t=$1; shift
+	(cd "$_t" && sh .context/bin/ctx "$@")
+}
+
+finish() {
+	printf '%s: %d passed, %d failed\n' "$T_NAME" "$T_PASS" "$T_FAIL"
+	[ "$T_FAIL" -eq 0 ]
+}
