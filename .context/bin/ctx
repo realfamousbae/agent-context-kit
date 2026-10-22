@@ -9,7 +9,7 @@ cmd=${1:-help}
 [ $# -gt 0 ] && shift
 
 case $cmd in
-	brief|claim|entry|ask|check|status|compact|config|end|id|migrate)
+	brief|start|checkpoint|claim|entry|ask|check|status|compact|config|end|id|migrate)
 		exec "${CTX_SHELL:-sh}" "$CTX_BIN/cmd/$cmd.sh" "$@" ;;
 	version|--version)
 		sed -n 's/.*"kit_version"[ ]*:[ ]*"\([^"]*\)".*/\1/p' "$CTX_BIN/../kit.json" 2>/dev/null ;;
@@ -17,17 +17,19 @@ case $cmd in
 		cat <<'HELP'
 ctx — shared project memory for people and AI agents (agent-context-kit)
 
-  ctx brief [--short] [--budget BYTES] [--no-fetch]   start-of-session summary (never fails)
+  ctx brief [--full|--short] [--budget BYTES]          start card (default) / everything / after compaction; never fails
+  ctx start --goal "…" [--area "paths"] [T-…|--new "Title"]   session entry: goal into the journal draft + claim
+  ctx checkpoint [push|deploy|commit]                 compare the work with the goal before an important step
+  ctx end [--outcome met|partly|not-met]              session exit: show the goal and changes / finish and release
   ctx claim T-… --area "path/ glob*"                  claim a task and its files
   ctx claim --new "Title" --area "…"                  create and claim a task
   ctx claim --done T-… | --pause T-…                  release a claim
   ctx entry --agent claude|codex --model ID           create or return your journal draft
-  ctx entry --finish                                  validate the draft and mark it done
+  ctx entry --finish [--outcome …]                    validate the draft and mark it done (default outcome in-progress)
   ctx ask @who "question" [--task T-…]                ask another participant or agent
   ctx ask --answer Q-… "answer" [--keep-open]         answer (closes with ✅)
   ctx ask --list                                      open questions
   ctx id T|D|G|Q                                      next free ID for you today
-  ctx end                                             end-of-session checklist
   ctx check --staged | --soft | --range A..B          enforcement (hooks, Claude Code Stop, CI)
   ctx status [--days N]                               bypasses, brief size, stale claims, old questions
   ctx compact [--apply]                               prepare / perform journal compaction

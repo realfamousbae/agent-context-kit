@@ -1,9 +1,13 @@
 #!/bin/sh
-# ctx brief [--short] [--budget BYTES] [--no-fetch] [--agent A] [--hook [--format claude|codex]]
-# Start-of-session summary within a byte budget, highest priority first:
-#   warnings, questions to me, tasks in progress, gotchas, others' entries since my last one (all branches),
-#   code commits without a journal entry, recent entries, decisions index, map.
-# --short (after context compaction): warnings, questions, tasks, gotchas and my current draft.
+# ctx brief [--full|--short] [--budget BYTES] [--no-fetch] [--agent A] [--hook [--format claude|codex]]
+# Default: the start card (start_budget_bytes, ~2.5 KB) — it stays in the agent's context for the whole session,
+#   so it holds only what the session must not miss: warnings, questions to me, live claims, one line per entry
+#   of others since my last one (all branches) with their notes for others, gotchas new since then, counts.
+# --full: everything within brief_budget_bytes — warnings, questions, tasks, all active gotchas, others' entries,
+#   commits without a journal entry, recent entries, decisions index, map.
+# --short (after context compaction): warnings, questions, tasks, gotchas and my current draft (goal, plan).
+# --hook reads source from the hook JSON: compact → --short; resume → only warnings and questions (the earlier
+#   card is still in the transcript).
 # --hook: called by an agent's SessionStart hook. Reads the hook JSON on stdin (cwd, source), uses
 #   hook_budget_bytes (Claude Code caps hook context at 10,000 characters), and with --format codex
 #   prints {"hookSpecificOutput": {"additionalContext": …}} as Codex expects.
@@ -15,10 +19,11 @@ CTX_BIN=${CTX_BIN:-$(cd "$(dirname "$0")/.." && pwd)}
 GIT_OPTIONAL_LOCKS=0
 export GIT_OPTIONAL_LOCKS
 
-short="" budget="" fetch=1 agent_arg="" hook="" format=claude
+short="" budget="" fetch=1 agent_arg="" hook="" format=claude mode=card
 while [ $# -gt 0 ]; do
 	case $1 in
-		--short) short=1 ;;
+		--short) short=1; mode=short ;;
+		--full) mode=full ;;
 		--budget) budget=${2:-}; shift ;;
 		--no-fetch) fetch="" ;;
 		--agent) agent_arg=${2:-}; shift ;;
@@ -31,7 +36,10 @@ done
 if [ -n "$hook" ]; then
 	ctx_hook_read
 	ctx_hook_cd
-	[ "$(ctx_hook_field source)" = compact ] && short=1
+	case $(ctx_hook_field source) in
+		compact) short=1; mode=short ;;
+		resume) mode=resume ;;
+	esac
 fi
 
 # render_entry NAME LABEL KEYONLY < entry — compact rendering of one journal entry.
@@ -40,6 +48,7 @@ render_entry() {
 		NR == 1 && /^---/ { fm = 1; next }
 		fm && /^---/ {
 			fm = 0
+			if (keyonly == "line") next
 			printf "### %s — %s/%s, %s, %s%s\n", name, f["author"], f["agent"], f["model"], f["date"], label
 			if (f["tasks"] != "" && f["tasks"] != "[]") printf "tasks: %s\n", f["tasks"]
 			if (f["status"] == "draft") print "(draft)"
@@ -54,8 +63,17 @@ render_entry() {
 			pending = 1; next
 		}
 		/^[ \t\r]*$/ || /^[ \t]*<!--.*-->[ \t\r]*$/ { next }
+		keyonly == "line" { if (key == "done" && first == "") first = $0; if (key == "for-others" && nfo < 3) fo[++nfo] = $0; next }
 		inc { if (pending) { print "**" head "**"; pending = 0 } print }
-		END { print "" }'
+		END {
+			if (keyonly == "line") {
+				sub(/^[-*] /, "", first)
+				printf "- %s/%s%s: %s\n", f["author"], f["agent"], label, (first == "" ? "(no Done section)" : first)
+				for (i = 1; i <= nfo; i++) print "  " fo[i]
+				exit
+			}
+			print ""
+		}'
 }
 
 brief_main() {
@@ -71,11 +89,12 @@ brief_main() {
 	lang=$(ctx_lang)
 	branch=$(git symbolic-ref --short -q HEAD 2>/dev/null || echo "detached HEAD")
 	if [ -n "$short" ]; then budget=${budget:-$(ctx_cfg_int brief_short_budget_bytes 8000)}
+	elif [ "$mode" = card ] || [ "$mode" = resume ]; then budget=${budget:-$(ctx_cfg_int start_budget_bytes 2500)}
 	elif [ -n "$hook" ] && [ "$format" = claude ]; then budget=${budget:-$(ctx_cfg_int hook_budget_bytes 9500)}
 	else budget=${budget:-$(ctx_cfg_int brief_budget_bytes 24000)}; fi
 	case $budget in ''|*[!0-9]*) budget=24000 ;; esac
 
-	S0=$(printf '# ctx brief — %s, branch %s, you are %s/%s\nWrite everything in .context/ in language "%s". Rules: .context/PROTOCOL.md.' \
+	S0=$(printf '# ctx brief — %s, branch %s, you are %s/%s\nWrite everything in .context/ in language "%s". Rules, only when unsure: .context/PROTOCOL.md.' \
 		"$(basename "$CTX_ROOT")" "$branch" "$me" "$agent" "$lang")
 
 	# 1. Warnings
@@ -124,6 +143,11 @@ brief_main() {
 		[ "${nother:-0}" -gt 0 ] && echo "($nother other open question(s): ctx ask --list)"
 	})
 
+	if [ "$mode" = resume ]; then
+		order="1 2"
+		[ -n "$S1$S2" ] || return 0
+	fi
+
 	# 3. Tasks in progress and blocked
 	S3=$({
 		now=$(ctx_tasks_in now)
@@ -151,7 +175,9 @@ brief_main() {
 	g=$(awk '/^- G-/ && !/\[resolved/' .context/GOTCHAS.md 2>/dev/null)
 	[ -n "$g" ] && S4=$(echo "## Gotchas (active)"; printf '%s\n' "$g")
 
-	if [ -n "$short" ]; then
+	if [ "$mode" = resume ]; then
+		:
+	elif [ -n "$short" ]; then
 		d=$(ctx_my_draft "$( [ -n "$agent_arg$CTX_AGENT" ] && ctx_agent "$agent_arg")" 2>/dev/null)
 		if [ -n "$d" ]; then
 			S5=$(echo "## Your journal draft: $d (keep filling it in)"; render_entry "$(basename "$d")" "" "" < "$d")
@@ -228,16 +254,34 @@ brief_main() {
 		m=$(ctx_content < .context/MAP.md 2>/dev/null | grep -v '^#' )
 		[ -n "$m" ] && S9=$(ctx_content < .context/MAP.md | sed '1s/^# /## /')
 		order="1 2 3 4 5 6 7 8 9"
+		if [ "$mode" = card ]; then
+			# The card replaces the long sections by one-liners and counts; details: ctx brief --full.
+			F5=$(section5 line | awk '!/^  / || !seen[$0]++')   # the same note repeated by several entries: once
+			S5=""; A5=""
+			[ -n "$F5" ] && S5=$(printf '## New from others since your last entry\n%s' "$F5")
+			since=$(printf '%s' "$lastname" | cut -c1-8)
+			g_new=$(printf '%s\n' "$g" | awk -v d="${since:-0}" -v me="($me/" 'index($0, me) { next } match($0, /G-[0-9]+/) { if (substr($0, RSTART + 2, 8) >= d) print }')
+			g_old=$(printf '%s\n' "$g" | awk 'NF' | wc -l | tr -d ' ')
+			g_old=$((g_old - $(printf '%s\n' "$g_new" | awk 'NF' | wc -l | tr -d ' ')))
+			S4=$( [ -n "$g_new" ] && { echo "## Gotchas new since your last entry"; printf '%s\n' "$g_new"; }
+				[ "$g_old" -gt 0 ] && echo "($g_old older active gotcha(s): ctx brief --full)")
+			nmiss=$(printf '%s\n' "$miss" | awk 'NF' | wc -l | tr -d ' ')
+			S6=""; [ "$nmiss" -gt 0 ] && S6="($nmiss code commit(s) without a journal entry since your last one: ctx brief --full)"
+			S7=""; A7=""; S8=""; S9=""
+			S3=$(printf '%s\n' "$S3" | sed -e 's/ — since [0-9-]*//' -e 's/^## Tasks in progress.*/## Claims (do not edit these areas without asking)/')
+			order="1 2 3 5 4 6"
+		fi
 	fi
 
 	# Assemble within the budget.
 	size() { printf '%s\n' "$1" | wc -c | tr -d ' '; }
 	total=$(size "$S0")
 	for s in $order; do eval "v=\$S$s"; [ -n "$v" ] && total=$((total + $(size "$v") + 1)); done
-	if [ "$total" -gt "$budget" ] && [ -z "$short" ]; then
+	if [ "$total" -gt "$budget" ] && [ "$mode" = full ]; then
 		S1=$(printf '%s\n%s' "$S1" "- Full context is $total bytes, over the $budget-byte brief budget: older parts are shortened. Consider \"ctx compact\"." | awk 'NF')
 	fi
 	[ -n "$S1" ] && S1=$(printf '## Warnings\n%s' "$S1")
+	[ "$mode" = card ] && budget=$((budget - 140))   # room for the footer line
 	printf '%s\n\n' "$S0"
 	used=$(( $(size "$S0") + 1 )); omitted=""
 	for s in $order; do
@@ -260,8 +304,10 @@ brief_main() {
 		fi
 	done
 	[ -n "$omitted" ] && echo "[Omitted to fit the brief budget: $omitted — read them in .context/]"
-	if [ -n "$hook" ] && { [ "$used" -ge "$budget" ] || [ -n "$omitted" ]; }; then
-		echo "Full brief: sh .context/bin/ctx brief --no-fetch"
+	if [ "$mode" = card ]; then
+		echo "On a task: ctx start --goal \"…\" --area \"…\". Checkpoints: commit, push/deploy, ctx end. More: ctx brief --full."
+	elif [ -n "$hook" ] && { [ "$used" -ge "$budget" ] || [ -n "$omitted" ]; }; then
+		echo "Full brief: sh .context/bin/ctx brief --full --no-fetch"
 	fi
 	return 0
 }

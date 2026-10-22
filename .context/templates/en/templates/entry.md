@@ -5,7 +5,14 @@ agent: {{agent}}
 model: {{model}}
 tasks: [{{tasks}}]
 status: draft
+outcome: in-progress
 ---
+## Goal <!-- ctx:goal -->
+<!-- Set at the start: what the user asked for and how you will know it is done. Checkpoints compare against it. -->
+
+## Plan <!-- ctx:plan -->
+<!-- Optional: the steps you intend to take. -->
+
 ## Done <!-- ctx:done -->
 <!-- 1–5 bullets: what changed and why. Not a restatement of the diff. -->
 

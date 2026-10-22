@@ -4,17 +4,19 @@ CTX_BIN=${CTX_BIN:-$(cd "$(dirname "$0")/.." && pwd)}
 . "$CTX_BIN/ctx-lib.sh"
 # ctx entry — the session's journal entry.
 #   ctx entry [--agent A] [--model M] [--new]   create a draft, or print the existing one
-#   ctx entry --finish [--agent A]              check required sections, drop empty ones, set status: done
+#   ctx entry --finish [--outcome O] [--agent A] check required sections, drop empty ones, set status: done
+#                                               and outcome (in-progress | met | partly | not-met; default in-progress)
 #   ctx entry --path [--agent A]                print the current draft path (exit 1 if none)
 ctx_init
 
-mode=create agent_arg="" model_arg="" force_new=""
+mode=create agent_arg="" model_arg="" force_new="" outcome=""
 while [ $# -gt 0 ]; do
 	case $1 in
 		--agent) agent_arg=${2:-}; shift ;;
 		--model) model_arg=${2:-}; shift ;;
 		--new) force_new=1 ;;
 		--finish|--done) mode=finish ;;
+		--outcome) outcome=${2:-}; shift ;;
 		--path) mode=path ;;
 		*) ctx_die "unknown option: $1 (see ctx help)" ;;
 	esac
@@ -25,7 +27,13 @@ agent=$(ctx_agent "$agent_arg")
 
 finish() {
 	local f missing empty k tmp lines
-	f=$(ctx_my_draft "$agent") || ctx_die "no draft entry of $(ctx_author) — create one with: ctx entry --agent <claude|codex> --model <id>"
+	[ -z "$outcome" ] || ctx_outcome_valid "$outcome" || ctx_die "--outcome: in-progress | met | partly | not-met"
+	if ! f=$(ctx_my_draft "$agent"); then
+		# already finished earlier in this session: only the outcome can change
+		[ -n "$outcome" ] && f=$(ctx_my_current_entry "$agent") && ctx_set_frontmatter "$f" outcome "$outcome" &&
+			{ ctx_say "$f: outcome $outcome"; exit 0; }
+		ctx_die "no draft entry of $(ctx_author) — create one with: ctx start --goal \"…\" (or ctx entry --agent <claude|codex> --model <id>)"
+	fi
 	missing=$(ctx_entry_missing "$f")
 	if [ -n "$missing" ]; then
 		ctx_err "$f: fill in the required sections first: $(echo "$missing" | tr '\n' ' ')"
@@ -33,7 +41,7 @@ finish() {
 		exit 1
 	fi
 	empty=""
-	for k in learned decisions risks for-others for-humans files; do
+	for k in plan learned decisions risks for-others for-humans files; do
 		[ -n "$(ctx_section "$f" "$k" | ctx_content)" ] || empty="$empty $k "
 	done
 	tmp=$(ctx_tmp) || ctx_die "cannot create a temp file"
@@ -56,9 +64,10 @@ finish() {
 		{ if (blank_pending && printed) print ""; blank_pending = 0; print; printed = 1 }
 	' "$f" > "$tmp" && cat "$tmp" > "$f"
 	rm -f "$tmp"
+	ctx_set_frontmatter "$f" outcome "${outcome:-$(ctx_frontmatter "$f" outcome | grep . || echo in-progress)}"
 	sd=$(ctx_state_dir) && rm -f "$sd/ending"
 	lines=$(awk '/^---/ { fm++; next } fm >= 2' "$f" | ctx_content | wc -l | tr -d ' ')
-	ctx_say "$f: status done ($lines lines)."
+	ctx_say "$f: status done, outcome $(ctx_frontmatter "$f" outcome) ($lines lines)."
 	[ "$lines" -le 40 ] || ctx_say "WARNING: longer than ~40 lines. Keep only what is not in the code or the commit message."
 	ctx_say "Stage it with the code: git add $f"
 }

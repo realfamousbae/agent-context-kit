@@ -61,8 +61,9 @@ From TODO/FIXME in the code, open issues (if you can read them) and what the use
 
 ## 7. First journal entry
 
-`sh .context/bin/ctx entry --agent <claude|codex> --model <model id>` — record the installation: what was set up,
-the chosen language, what you could not determine (put it under "For humans"). Then `ctx entry --finish`.
+`sh .context/bin/ctx start --goal "Connect agent-context-kit" --agent <claude|codex> --model <model id>` — then record
+the installation in the draft: what was set up, the chosen language, what you could not determine (under
+"For humans"). Then `sh .context/bin/ctx end --outcome met` (or `partly` with the reason).
 
 ## 8. Show the user, do not commit by yourself
 

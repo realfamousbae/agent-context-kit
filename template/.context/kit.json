@@ -1,6 +1,7 @@
 {
-  "kit_version": "0.1.0",
+  "kit_version": "0.2.0",
   "language": "en",
+  "start_budget_bytes": 2500,
   "brief_budget_bytes": 24000,
   "brief_short_budget_bytes": 8000,
   "hook_budget_bytes": 9500,
@@ -15,5 +16,6 @@
   "question_stale_days": 3,
   "fetch_timeout_seconds": 8,
   "check_updates": false,
+  "checkpoint_patterns": "",
   "kit_repo": "https://github.com/realfamousbae/agent-context-kit.git"
 }

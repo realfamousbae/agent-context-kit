@@ -59,7 +59,7 @@ commit_all "$R" "bob work"
 echo x > "$R/code.py"; git -C "$R" add code.py; git -C "$R" commit -q -m "hotfix by a human"
 git -C "$R" config ctx.author alice; git -C "$R" config ctx.initials aa
 
-out=$(CTX_AGENT=claude ctx "$R" brief)
+out=$(CTX_AGENT=claude ctx "$R" brief --full)
 contains "question for me" "$out" "Why src?"
 not_contains "question for codex is not mine (I am claude)" "$out" "For any codex"
 contains "count of other questions" "$out" "1 other open question"
@@ -75,11 +75,11 @@ order=$(printf '%s\n' "$out" | grep -n -e '^## Open questions' -e '^## Tasks' -e
 equals "sections in priority order" "$order" "## Open questions for you — answer: ctx ask --answer Q-… \"…\"|## Tasks in progress — claim yours before editing: ctx claim T-… --area \"…\"|## Gotchas (active)|## New from others since your last entry|## Commits with code but no journal entry (ask their authors or check the diff)|## Decisions (active; full text in .context/DECISIONS.md)|## Project map|"
 
 # budget
-small=$(CTX_AGENT=claude ctx "$R" brief --budget 700)
+small=$(CTX_AGENT=claude ctx "$R" brief --full --budget 700)
 size=$(printf '%s' "$small" | wc -c | tr -d ' ')
 [ "$size" -le 900 ] && ok "budget 700 respected ($size bytes)" || not_ok "budget 700 respected" "$size bytes"
 contains "budget: questions survive" "$small" "Why src?"
-contains "budget: omitted sections named" "$small" "Omitted to fit the brief budget: Gotchas"
+contains "budget: omitted sections named" "$small" "Omitted to fit the brief budget: Tasks in progress"
 contains "budget: over-budget warning" "$small" "over the 700-byte brief budget"
 
 # --short: draft is shown
@@ -94,5 +94,23 @@ not_contains "short: no map" "$short" "the app"
 # many entries → compaction warning
 ctx "$R" config compact_threshold_entries 1 >/dev/null
 contains "compaction warning" "$(ctx "$R" brief)" "time to compact"
+
+# start card (default): small, one line per entry of others, counts instead of long sections
+ctx "$R" config compact_threshold_entries 30 >/dev/null
+card=$(CTX_AGENT=claude ctx "$R" brief)
+size=$(printf '%s' "$card" | wc -c | tr -d ' ')
+[ "$size" -le 2500 ] && ok "card within start_budget_bytes ($size bytes)" || not_ok "card within budget" "$size"
+contains "card: question for me" "$card" "Why src?"
+contains "card: claims" "$card" "## Claims"
+contains "card: one line per entry of others" "$card" "- bob/codex: did a thing"
+not_contains "card: no entry headers" "$card" "### "
+contains "card: new gotcha" "$card" "active trap"
+contains "card: commits without journal only counted" "$card" "code commit(s) without a journal entry"
+not_contains "card: no map" "$card" "the app"
+not_contains "card: no decisions" "$card" "Keep it"
+contains "card: footer" "$card" "ctx start --goal"
+resume=$(cd "$R" && printf '{"source":"resume","cwd":"%s"}' "$R" | CTX_AGENT=claude "$CTX_SHELL" .context/bin/ctx brief --hook)
+contains "resume: questions again" "$resume" "Why src?"
+not_contains "resume: no claims or entries (already in the transcript)" "$resume" "## Claims"
 
 finish

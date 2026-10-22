@@ -1,11 +1,11 @@
 ---
-description: End of session — finish the journal entry, release the claim, commit code and context together
+description: End of session — compare with the goal, finish the journal entry, release the claim
 ---
-Run `sh .context/bin/ctx end` and follow its checklist ("Session end" in `.context/PROTOCOL.md`):
+Follow "Exit" in `.context/PROTOCOL.md`:
 
-1. Fill in your journal draft — only what is not in the code or the commit message — then `sh .context/bin/ctx entry --finish`.
-2. Release your claims: `sh .context/bin/ctx claim --done T-…` or `--pause T-…`.
-3. Make sure GOTCHAS, DECISIONS and MAP have what you found.
-4. Commit code and `.context/` in one commit, in the user's name, without AI co-author lines. Push only if the user agrees.
+1. `sh .context/bin/ctx end` — compare the result with the goal it shows.
+2. Fill in the journal entry (only what the code and commit message do not say), and GOTCHAS / DECISIONS / MAP if you found something.
+3. `sh .context/bin/ctx end --outcome met|partly|not-met`. If not met, tell the user what is missing.
+4. Commit code and `.context/` together, in the user's name, without AI co-author lines. Push only if the user agrees.
 
 $ARGUMENTS

@@ -1,16 +1,10 @@
-<!-- ctx:begin v1 -->
-## Shared project context — mandatory
-Several people and agents work on this project. Project memory lives in `.context/`.
-- At session start run `sh .context/bin/ctx brief` (Windows without sh: `.context\bin\ctx.cmd brief`);
-  skip if a hook already injected it. Tell the user in 3–5 lines what others did, what is in progress,
-  and which questions are addressed to you.
-- Before editing code, claim your area: `ctx claim`. If it overlaps someone else's claim, ask first (`ctx ask`).
-- Rules: `.context/PROTOCOL.md`. They override your own note-taking habits.
-- Write everything in `.context/` in the language set in `.context/kit.json`. Talk to the user in their language.
-- Non-obvious behaviour → GOTCHAS now. Decision → DECISIONS. Structure → MAP. Question to others → `ctx ask`.
-- Journal: `ctx entry --agent <claude|codex> --model <id>` at start, fill it in, `ctx entry --finish` before committing.
-- Code without a finished journal entry in the same commit is rejected by the commit hooks.
-- No secrets, keys, tokens, personal data or internal URLs in `.context/`.
-- No `Co-Authored-By` or AI attribution in commits.
-- User commands: "ctx start", "ctx end", "ctx compact", "ctx status", "ctx ask".
+<!-- ctx:begin v2 -->
+## Shared project context (agent-context-kit)
+Project memory for people and agents lives in `.context/`; `ctx` = `sh .context/bin/ctx` (Windows: `.context\bin\ctx.cmd`).
+Use it at three points only — not during routine work:
+- **Start.** If no ctx card was injected at session start, run `ctx brief`. Tell the user in 2–4 lines what is new from others and which questions are for you. When the user gives a task: `ctx start --goal "<what, and how we know it is done>" --area "<paths>"`, then work by your own plan.
+- **Checkpoints — before git push, a deploy, or publishing:** compare the result with your goal; not met or unclear → ask the user before going on. Hooks of Claude Code and Codex show the checkpoint card by themselves; without them run `ctx checkpoint push`. Commits need a finished journal entry (`ctx entry --finish`; outcome `in-progress` is fine mid-session).
+- **End:** `ctx end`, compare with the goal, then `ctx end --outcome met|partly|not-met`; if not met, tell the user what is missing.
+Record in `.context/` (language from `.context/kit.json`) only what the code and commit message do not say: traps → GOTCHAS, choices → DECISIONS, questions to others → `ctx ask @who "…"`. Write them at the next checkpoint at the latest.
+No secrets or personal data in `.context/`. No AI co-author lines in commits. Rules, only when unsure: `.context/PROTOCOL.md`.
 <!-- ctx:end -->

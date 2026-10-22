@@ -17,8 +17,8 @@ out=$(cd "$R" && printf '{"session_id":"s1","cwd":"%s","hook_event_name":"Sessio
 	CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$start")
 contains "startup brief printed" "$out" "# ctx brief"
 size=$(printf '%s' "$out" | wc -c | tr -d ' ')
-[ "$size" -le 10000 ] && ok "startup brief fits the 10,000-char hook cap ($size bytes)" || not_ok "brief fits hook cap" "$size bytes"
-contains "points to the full brief" "$out" "Full brief: sh .context/bin/ctx brief"
+[ "$size" -le 2500 ] && ok "startup card is small ($size bytes; Claude Code caps hook context at 10,000 chars)" || not_ok "startup card is small" "$size bytes"
+contains "the card points to the full brief" "$out" "ctx brief --full"
 
 # Claude Code: SessionStart (compact) — short brief with the draft
 (cd "$R" && CTX_AGENT=claude "$CTX_SHELL" .context/bin/ctx entry --model m >/dev/null 2>&1)
@@ -34,19 +34,22 @@ git -C "$R" worktree add -q -b feature "$T_TMP/wt" 2>/dev/null
 out=$(cd "$R" && printf '{"session_id":"s2","cwd":"%s","source":"startup"}' "$T_TMP/wt" | CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$start")
 contains "worktree: brief is about the worktree's branch" "$out" "branch feature"
 
-# Claude Code: Stop — reminder once, exit 2, stderr goes to Claude
-stop=$(hook_cmd "$CS" Stop 0)
-echo x > "$R/code.py"
-rm -f "$R/$d"
-out=$(cd "$R" && printf '{"session_id":"s3","cwd":"%s","stop_hook_active":false}' "$R" | CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$stop" 2>&1); rc=$?
-equals "Stop: reminder exits 2" "$rc" "2"
-contains "Stop: reminder text" "$out" "no journal draft"
-out=$(cd "$R" && printf '{"session_id":"s3","cwd":"%s","stop_hook_active":false}' "$R" | CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$stop" 2>&1); rc=$?
-equals "Stop: once per session" "$rc" "0"
-out=$(cd "$R" && printf '{"session_id":"s4","cwd":"%s","stop_hook_active":true}' "$R" | CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$stop" 2>&1); rc=$?
-equals "Stop: stop_hook_active never blocks" "$rc" "0"
-out=$(cd "$R" && CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$stop" < /dev/null 2>&1); rc=$?
-equals "Stop: no hook input never blocks" "$rc" "0"
+# No Stop hook any more: nothing runs per turn
+check "no Stop hook in Claude settings" sh -c "! grep -q '\"Stop\"' '$CS'"
+check "no Stop hook in Codex hooks" sh -c "! grep -q '\"Stop\"' '$CX'"
+
+# Claude Code: PreToolUse checkpoint — "if" filters make it run only for push/deploy-like commands
+pre=$(hook_cmd "$CS" PreToolUse 0)
+contains "first handler is filtered to git push" "$(hook_cmd "$CS" PreToolUse 0 if)" "Bash(git push"
+pj() { printf '{"session_id":"s5","cwd":"%s","tool_name":"Bash","tool_input":{"command":"%s"}}' "$R" "$1"; }
+out=$(cd "$R" && pj "git push origin main" | CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$pre"); rc=$?
+equals "push gate exits 0" "$rc" "0"
+contains "push gate asks the user while the goal is not met" "$out" '"permissionDecision":"ask"'
+not_contains "push gate never says allow" "$out" '"allow"'
+printf '%s' "$out" > "$T_TMP/ask.json"; check "push gate output is JSON" json_ok "$T_TMP/ask.json"
+equals "ordinary command: no output" "$(cd "$R" && pj "npm test" | CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$pre")" ""
+equals "reading a deploy file: no output" "$(cd "$R" && pj "cat deploy.md" | CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$pre")" ""
+equals "CTX_CONFIRMED=1 passes" "$(cd "$R" && pj "CTX_CONFIRMED=1 git push" | CLAUDE_PROJECT_DIR="$PD" CTX_AGENT=claude sh -c "$pre")" ""
 
 # Codex: SessionStart from a subdirectory — JSON with additionalContext
 mkdir -p "$R/src/deep"
@@ -56,16 +59,20 @@ printf '%s' "$out" > "$T_TMP/codex.json"
 check "Codex SessionStart output is JSON" json_ok "$T_TMP/codex.json"
 contains "Codex SessionStart additionalContext" "$out" '"additionalContext":"# ctx brief'
 contains "Codex brief knows it is codex" "$out" "/codex"
-# Codex: Stop — always exit 0 with JSON: a block decision once, then {}
-cstop=$(hook_cmd "$CX" Stop 0)
-out=$(cd "$R" && printf '{"session_id":"c2","cwd":"%s","stop_hook_active":false,"turn_id":"t"}' "$R" | sh -c "$cstop" 2>/dev/null); rc=$?
-equals "Codex Stop: reminder exits 0" "$rc" "0"
-contains "Codex Stop: reminder is a block decision" "$out" '{"decision":"block","reason":"ctx reminder'
-printf '%s' "$out" > "$T_TMP/stop.json"; check "Codex Stop: valid JSON" json_ok "$T_TMP/stop.json"
-out=$(cd "$R" && printf '{"session_id":"c2","cwd":"%s","stop_hook_active":false,"turn_id":"t"}' "$R" | sh -c "$cstop" 2>/dev/null); rc=$?
-equals "Codex Stop: then exit 0" "$rc" "0"
-equals "Codex Stop: prints {} on exit 0" "$out" "{}"
-contains "Codex Windows command uses ctx.ps1" "$(hook_cmd "$CX" Stop 0 commandWindows)" "ctx.ps1"
+# Codex: PreToolUse checkpoint — deny with the card while the goal is not met (Codex has no "ask")
+cpre=$(hook_cmd "$CX" PreToolUse 0)
+out=$(cd "$R" && pj "./scripts/deploy.sh prod" | sh -c "$cpre"); rc=$?
+equals "Codex gate exits 0" "$rc" "0"
+contains "Codex gate denies with the card" "$out" '"permissionDecision":"deny"'
+contains "Codex gate explains the way out" "$out" "CTX_CONFIRMED=1"
+printf '%s' "$out" > "$T_TMP/deny.json"; check "Codex gate output is JSON" json_ok "$T_TMP/deny.json"
+equals "Codex: ordinary command silent" "$(cd "$R" && pj "ls -la" | sh -c "$cpre")" ""
+# once the session is finished with outcome met, the gates are silent
+(cd "$R" && CTX_AGENT=codex "$CTX_SHELL" .context/bin/ctx start --goal "ship the export" >/dev/null 2>&1)
+fill_draft "$R" codex >/dev/null
+(cd "$R" && CTX_AGENT=codex "$CTX_SHELL" .context/bin/ctx end --outcome met >/dev/null 2>&1)
+equals "Codex gate silent after outcome met" "$(cd "$R" && pj "git push" | sh -c "$cpre")" ""
+contains "Codex Windows command uses ctx.ps1" "$(hook_cmd "$CX" PreToolUse 0 commandWindows)" "ctx.ps1"
 
 # Re-install keeps both files unchanged; uninstall removes .codex/hooks.json we created
 before=$(snapshot "$R"); install_kit "$R" >/dev/null 2>&1

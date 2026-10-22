@@ -115,7 +115,7 @@ commit_all() { git -C "$1" add -A && git -C "$1" commit -q -m "$2"; }
 fill_draft() {
 	_d=$(cd "$1" && "$CTX_SHELL" .context/bin/ctx entry --path ${2:+--agent "$2"})
 	[ -n "$_d" ] || return 1
-	awk '{ print } /<!-- ctx:done -->/ { print "- did a thing" } /<!-- ctx:verified -->/ { print "tests" } /<!-- ctx:next -->/ { print "- next thing" }' \
+	awk '{ print } /<!-- ctx:goal -->/ { print "- make the thing work" } /<!-- ctx:done -->/ { print "- did a thing" } /<!-- ctx:verified -->/ { print "tests" } /<!-- ctx:next -->/ { print "- next thing" }' \
 		"$1/$_d" > "$1/$_d.tmp" && mv "$1/$_d.tmp" "$1/$_d"
 	(cd "$1" && "$CTX_SHELL" .context/bin/ctx entry --finish ${2:+--agent "$2"} >/dev/null)
 	printf '%s\n' "$_d"

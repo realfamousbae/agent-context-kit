@@ -22,7 +22,7 @@ done
 block=$(cat "$KIT_DIR/snippets/agents-block.md")
 contains "agents block begins with marker" "$(head -n 1 "$KIT_DIR/snippets/agents-block.md")" "<!-- ctx:begin v"
 contains "agents block ends with marker" "$(tail -n 1 "$KIT_DIR/snippets/agents-block.md")" "<!-- ctx:end -->"
-contains "agents block names Windows wrapper" "$block" 'ctx.cmd brief'
+contains "agents block names Windows wrapper" "$block" "ctx.cmd"
 
 # Kit-owned files are English: no Cyrillic outside i18n/ru and tests.
 has_cyr() { find "$@" -type f | while IFS= read -r f; do LC_ALL=C awk '/[\320\321]/ { print FILENAME; exit }' "$f"; done; }

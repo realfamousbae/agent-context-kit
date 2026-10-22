@@ -20,7 +20,7 @@
 - Decision: `ctx brief --hook` uses `hook_budget_bytes` = 9500 and ends with "Full brief: sh .context/bin/ctx brief" when shortened. `brief_budget_bytes` (24000) stays for manual runs and Codex.
 - Rejected: JSON `additionalContext` (same cap); splitting over several hooks (order and caps not guaranteed).
 - By: realfamousbae/claude-opus-5-5
-- Status: active
+- Status: superseded by D-20261022-rf-14
 
 ### D-20261022-rf-3 — PreCompact is not used; SessionStart(compact) restores context
 - Context: plan item 11 asked to verify. Docs: PreCompact output is not added to the model context (systemMessage discarded; exit 2 only blocks compaction). SessionStart has a `compact` matcher whose stdout is added.
@@ -34,7 +34,7 @@
 - Decision: as planned, plus: no hook input at all → never block (cannot see `stop_hook_active`); reminder state in `.git/ctx/reminded-<session_id>`, silent if `.git` is not writable.
 - Rejected: blocking every turn with changes and no entry (nags, loops).
 - By: realfamousbae/claude-opus-5-5
-- Status: active
+- Status: superseded by D-20261022-rf-15
 
 ### D-20261022-rf-5 — Hook commands use `sh "${CLAUDE_PROJECT_DIR}/…"` and follow the `cwd` field
 - Context: docs: Claude Code runs hooks in Git Bash on Windows (PowerShell only without Git Bash); `${CLAUDE_PROJECT_DIR}` is the recommended spelling; in worktrees `CLAUDE_PROJECT_DIR` stays at the main checkout while the input `cwd` follows the session.
@@ -92,4 +92,38 @@
 - Decision: keep `/ctx-start`, `/ctx-end`, `/ctx-compact`, `/ctx-ask` as command files (explicit invocation only).
 - Rejected: skills — Claude may invoke them on its own judgement from the description; revisit in the pilot.
 - By: realfamousbae/claude-opus-5-5
+- Status: active
+
+### D-20261022-rf-14 — Context at entry, checkpoints and exit only; small start card
+- Context: the user pointed out that cheap subscriptions pay for every token. Whatever a SessionStart hook injects stays in the transcript and is re-sent (cached) with every request; the v0.1 hook brief was up to 9.5 KB (Claude) / 24 KB (Codex), plus agents read PROTOCOL.md (8.9 KB).
+- Decision: the default `ctx brief` is a start card capped by `start_budget_bytes` (2500): warnings, questions for me, live claims, one line per entry of others since my last one (with their notes for others, deduplicated), gotchas new since then, counts of the rest. `--full` keeps the old brief on demand; `resume` injects only warnings and questions; `compact` brings back goal, draft and claims. The AGENTS block v2 says to use context at three points only and to open PROTOCOL.md only when unsure. Measured on a synthetic two-person project (8 entries, 12 gotchas, 6 decisions, 3 KB map): 9421 → 2309 bytes injected.
+- Rejected: a "lean profile" for cheap plans (two behaviours to maintain); no start context at all (claims and questions would be missed).
+- By: realfamousbae/claude-opus-5-5, T-20261022-rf-14
+- Status: active
+
+### D-20261022-rf-15 — No Stop hook; the journal is enforced at commits
+- Context: Stop runs after every response; even silent, it is per-turn machinery, and its reminder cost a model turn.
+- Decision: no Stop hook in the installed settings (an update removes the 0.1 one). The commit-msg hook still requires a finished entry; `ctx end` is the exit checkpoint. `ctx check --soft` stays available.
+- Rejected: keeping a silent Stop guard for `ctx end` (adds a process per turn for little value).
+- By: realfamousbae/claude-opus-5-5, T-20261022-rf-14
+- Status: active
+
+### D-20261022-rf-16 — Goal and outcome live in the journal entry
+- Context: checkpoints need something to compare against, and a verdict that scripts can read in any language.
+- Decision: `ctx start --goal` writes the goal (and optional plan) into the draft (new `ctx:goal`, `ctx:plan` sections, required only when the anchor exists, so 0.1 drafts still finish). Frontmatter `outcome: in-progress | met | partly | not-met`; `ctx entry --finish` defaults to in-progress so mid-session commits need no premature verdict; `ctx end --outcome …` sets the verdict and releases claims (Done when met, paused otherwise).
+- By: realfamousbae/claude-opus-5-5, T-20261022-rf-14
+- Status: active
+
+### D-20261022-rf-17 — Push/deploy checkpoint through PreToolUse: Claude asks the user, Codex is stopped
+- Context: Claude Code PreToolUse supports `if` filters and `permissionDecision: "ask"`; `allow` would bypass the user's own permission prompts. Codex PreToolUse has no `if` and does not support `ask` yet (parsed, reported as a failed hook).
+- Decision: Claude: handlers with `if` for `git push*`, `*deploy*`, `*publish*`, `* apply*`, `*docker push*`, `*helm *`, `*railway up*`, `*release create*` (Bash and PowerShell); the hook prints nothing when the session outcome is `met`, otherwise `ask` with the checkpoint card; never `allow`. Codex: matcher `Bash`, a plain-sh fast path exits for other commands; otherwise `deny` with the card and "ask the user, then rerun with CTX_CONFIRMED=1". The prefix is a speed bump the model could add itself, not enforcement. Extra patterns: kit.json `checkpoint_patterns` (Codex and the sh fast path; Claude needs an extra `if` handler).
+- Rejected: a git pre-push hook (cannot tell agents from humans, and runs after the decision); `additionalContext` on allowed commands (arrives after the command ran).
+- By: realfamousbae/claude-opus-5-5, T-20261022-rf-14
+- Status: active
+
+### D-20261022-rf-18 — Findings are written at the next checkpoint at the latest
+- Context: plan item 12 wanted gotchas written the moment they are found, which means extra tool calls mid-work; the user wants no context traffic during routine work.
+- Decision: traps, decisions and questions go into `.context/` at the next checkpoint (commit, push, end) at the latest; long sessions may write important findings into the draft at once, because the draft survives compaction and the conversation may not.
+- Rejected: immediate writes as a rule (token cost), end-only writes (lost on compaction or an aborted session).
+- By: realfamousbae/claude-opus-5-5, T-20261022-rf-14
 - Status: active

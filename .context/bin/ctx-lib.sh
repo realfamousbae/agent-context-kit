@@ -258,12 +258,55 @@ ctx_my_last_done() {
 	[ -n "$found" ] && printf '%s\n' "$found"
 }
 
-# ctx_entry_missing FILE — print required sections that are empty.
+# ctx_entry_missing FILE — print required sections that are empty (goal only in entries that have the anchor:
+# drafts made by kit 0.1 have none).
 ctx_entry_missing() {
 	local k
+	if grep -q '<!-- ctx:goal -->' "$1" 2>/dev/null; then
+		[ -n "$(ctx_section "$1" goal | ctx_content)" ] || echo goal
+	fi
 	for k in "done" verified next; do
 		[ -n "$(ctx_section "$1" "$k" | ctx_content)" ] || printf '%s\n' "$k"
 	done
+}
+
+# Outcome of a session, a Latin frontmatter value: in-progress (default, fine for mid-session commits),
+# met, partly, not-met. Push and deploy checkpoints want "met" or an explicit human confirmation.
+ctx_outcome_valid() { case $1 in in-progress|met|partly|not-met) return 0 ;; esac; return 1; }
+
+# ctx_set_frontmatter FILE KEY VALUE — replace KEY in the frontmatter, or add it before the closing ---.
+ctx_set_frontmatter() {
+	local tmp
+	tmp=$(ctx_tmp) || return 1
+	awk -v k="$2" -v v="$3" '
+		NR == 1 && /^---/ { fm = 1; print; next }
+		fm && index($0, k ":") == 1 { print k ": " v; done = 1; next }
+		fm && /^---/ { if (!done) print k ": " v; fm = 0; print; next }
+		{ print }' "$1" > "$tmp" && cat "$tmp" > "$1"
+	rm -f "$tmp"
+}
+
+# ctx_section_append FILE KEY TEXT — add TEXT as the first lines under the "## … <!-- ctx:KEY -->" heading.
+ctx_section_append() {
+	local tmp
+	tmp=$(ctx_tmp) || return 1
+	awk -v a="<!-- ctx:$2 -->" -v t="$3" '
+		{ print }
+		/^##[^#]/ && index($0, a) && !done { print t; done = 1 }' "$1" > "$tmp" && cat "$tmp" > "$1"
+	rm -f "$tmp"
+}
+
+# ctx_my_current_entry [AGENT] — my draft, else my newest entry (the one this session keeps updating).
+ctx_my_current_entry() {
+	local me f found
+	ctx_my_draft "${1:-}" && return 0
+	me=$(ctx_author); found=""
+	for f in $(ctx_entries); do
+		[ "$(ctx_entry_author "$f")" = "$me" ] || continue
+		[ -z "${1:-}" ] || [ "$(ctx_entry_agent "$f")" = "$1" ] || continue
+		found=$f
+	done
+	[ -n "$found" ] && printf '%s\n' "$found"
 }
 
 # ctx_entry_has_content FILE — anything written in any section?
@@ -546,4 +589,60 @@ ctx_json_string() {
 			printf "%s%s", (NR > 1 ? "\\n" : ""), $0
 		}
 		END { printf "\"" }'
+}
+
+# --- checkpoints (session exit, push, deploy) -------------------------------------------
+
+# ctx_changed_files — uncommitted paths outside .context/ (staged, modified, untracked).
+ctx_changed_files() {
+	git status --porcelain --untracked-files=all 2>/dev/null | cut -c4- | sed 's/^.* -> //; s/^"//; s/"$//' | grep -v '^\.context/'
+}
+
+# ctx_checkpoint_card KIND AGENT — what to compare before KIND (end, push, deploy, commit). Short on purpose.
+ctx_checkpoint_card() {
+	local kind agent e goal out missing changed n mine outside others q
+	kind=$1 agent=$2
+	e=$(ctx_my_current_entry "$agent" 2>/dev/null)
+	printf 'ctx checkpoint (%s) — compare the result with the session goal before going on.\n' "$kind"
+	if [ -n "$e" ]; then
+		goal=$(ctx_section "$e" goal | ctx_content | head -n 6)
+		out=$(ctx_frontmatter "$e" outcome)
+		if grep -q '<!-- ctx:goal -->' "$e"; then
+			printf 'Goal (%s):\n%s\n' "$e" "${goal:-  (not written yet — add it under the Goal heading)}"
+		else
+			printf 'Entry %s has no Goal section (older template): state the goal you worked towards.\n' "$e"
+		fi
+		printf 'Outcome so far: %s; entry status: %s\n' "${out:-in-progress}" "$(ctx_frontmatter "$e" status)"
+		missing=$(ctx_entry_missing "$e" | tr '\n' ' ')
+		[ -n "$missing" ] && printf 'Entry still needs: %s\n' "$missing"
+	else
+		echo "No journal entry for this session: ctx start --goal \"…\" (or ctx entry --agent $agent --model <id>)."
+	fi
+	changed=$(ctx_changed_files)
+	n=$(printf '%s\n' "$changed" | awk 'NF' | wc -l | tr -d ' ')
+	[ "$n" -gt 0 ] && printf 'Uncommitted outside .context/: %s file(s): %s\n' "$n" "$(printf '%s\n' "$changed" | head -n 8 | tr '\n' ' ')"
+	mine=$(ctx_tasks_in now | while IFS= read -r l; do
+		[ "$(ctx_task_field "$l" owner)" = "$(ctx_author)" ] && ctx_task_field "$l" area; done | tr '\n' ' ')
+	if [ -n "$changed" ]; then
+		outside=$(set -f; printf '%s\n' "$changed" | while IFS= read -r f; do
+			[ -n "$f" ] || continue
+			hit=""; for a in $mine; do ctx_path_in_area "$f" "$a" && hit=1 && break; done
+			[ -n "$hit" ] || printf '%s ' "$f"
+		done)
+		[ -n "$mine" ] && [ -n "$outside" ] && printf 'Outside your claimed area: %s\n' "$outside"
+		others=$( { ctx_tasks_in now; ctx_remote_claims | cut -f2-; } | while IFS= read -r l; do
+			o=$(ctx_task_field "$l" owner); [ -n "$o" ] && [ "$o" != "$(ctx_author)" ] || continue
+			case $l in (*" — paused "*) continue ;; esac
+			a=$(ctx_task_field "$l" area)
+			set -f
+			for f in $changed; do for i in $a; do
+				ctx_path_in_area "$f" "$i" && printf '%s (%s @%s) ' "$f" "$(ctx_task_field "$l" id)" "$o" && break
+			done; done
+			set +f
+		done)
+		[ -n "$others" ] && printf 'In other people'"'"'s claims: %s\n' "$others"
+	fi
+	q=$(ctx_questions .context/QUESTIONS.md mine "$(ctx_my_addressees "$agent")" | grep -c '^- Q-')
+	[ "${q:-0}" -gt 0 ] && printf 'Open questions addressed to you: %s (ctx ask --list)\n' "$q"
+	return 0
 }

@@ -21,7 +21,7 @@ commit_all "$R" "project"
 out=$(install_kit "$R" 2>&1); rc=$?
 equals "install exit 0" "$rc" "0"
 agents=$(cat "$R/AGENTS.md")
-equals "ctx block is first in AGENTS.md" "$(head -n 1 "$R/AGENTS.md")" "<!-- ctx:begin v1 -->"
+equals "ctx block is first in AGENTS.md" "$(head -n 1 "$R/AGENTS.md")" "<!-- ctx:begin v2 -->"
 contains "user rules kept in AGENTS.md" "$agents" "- Use tabs."
 equals "CLAUDE.md imports AGENTS.md first" "$(head -n 1 "$R/CLAUDE.md")" "@AGENTS.md"
 contains "user text kept in CLAUDE.md" "$(cat "$R/CLAUDE.md")" "Prefer small diffs."
@@ -29,7 +29,7 @@ settings=$(cat "$R/.claude/settings.json")
 contains "user permission kept" "$settings" "Bash(make test)"
 contains "user Stop hook kept" "$settings" "user-stop-hook"
 contains "our SessionStart hook added" "$settings" "ctx\\\" brief"
-contains "our Stop hook added" "$settings" "check --soft"
+contains "our checkpoint hook added" "$settings" "checkpoint --hook"
 contains "CTX_AGENT env added" "$settings" '"CTX_AGENT": "claude"'
 check "settings.json is valid JSON" json_ok "$R/.claude/settings.json"
 contains "user .gitattributes kept" "$(cat "$R/.gitattributes")" "*.png binary"
@@ -60,7 +60,7 @@ for tool in python none; do
 	if [ $tool = python ]; then
 		out=$(CTX_INSTALL_NO_JQ=1 install_kit "$P" 2>&1)
 		contains "python merge keeps user key" "$(cat "$P/.claude/settings.json")" '"model": "x"'
-		contains "python merge adds hooks" "$(cat "$P/.claude/settings.json")" "check --soft"
+		contains "python merge adds hooks" "$(cat "$P/.claude/settings.json")" "checkpoint --hook"
 		before=$(snapshot "$P"); (CTX_INSTALL_NO_JQ=1 install_kit "$P" >/dev/null 2>&1)
 		equals "python merge is idempotent" "$(snapshot "$P")" "$before"
 		before=$(snapshot "$P"); install_kit "$P" >/dev/null 2>&1
@@ -73,7 +73,7 @@ for tool in python none; do
 }'
 		Q="$T_TMP/q-none"; mkrepo "$Q"
 		(CTX_INSTALL_NO_JQ=1 CTX_INSTALL_NO_PYTHON=1 install_kit "$Q" >/dev/null 2>&1)
-		check "no jq/python, no settings: fragment copied" grep -q 'check --soft' "$Q/.claude/settings.json"
+		check "no jq/python, no settings: fragment copied" grep -q 'checkpoint --hook' "$Q/.claude/settings.json"
 	fi
 done
 

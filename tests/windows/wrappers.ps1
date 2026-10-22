@@ -57,9 +57,9 @@ try {
         Pop-Location
         $ok = $false; try { $j = $out | ConvertFrom-Json; $ok = $j.hookSpecificOutput.additionalContext -match '# ctx brief' } catch { }
         Check 'Codex commandWindows SessionStart gives JSON with the brief' $ok $out
-        $out = ('{}' | cmd /c $hooks.hooks.Stop[0].hooks[0].commandWindows | Out-String).Trim()
-        $ok = $false; try { $null = $out | ConvertFrom-Json; $ok = ($LASTEXITCODE -eq 0) } catch { }
-        Check 'Codex commandWindows Stop exits 0 with JSON' $ok $out
+        $out = ('{"tool_input":{"command":"git push"}}' | cmd /c $hooks.hooks.PreToolUse[0].hooks[0].commandWindows | Out-String).Trim()
+        $ok = ($LASTEXITCODE -eq 0); if ($out) { try { $null = $out | ConvertFrom-Json } catch { $ok = $false } }
+        Check 'Codex commandWindows PreToolUse exits 0 with JSON or nothing' $ok $out
     }
 
     $env:CTX_BASH_EXE = 'C:\does\not\exist\bash.exe'

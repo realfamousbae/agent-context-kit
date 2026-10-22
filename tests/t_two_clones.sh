@@ -16,7 +16,7 @@ ctx "$A" config push_claims auto >/dev/null; commit_all "$A" "auto push [no-ctx]
 out=$(ctx "$A" claim --new "Upload" --area "src/upload/")
 contains "auto push of the claim" "$out" "Pushed the claim"
 git -C "$C" pull -q --rebase
-contains "bob sees alice's claim after pull" "$(ctx "$C" brief)" "@alice/human — since"
+contains "bob sees alice's claim after pull" "$(ctx "$C" brief)" "Upload — @alice/human"
 check_fails "bob cannot claim an overlapping area" ctx "$C" claim --new "Refactor" --area "src/"
 
 # bob asks with a personal override push_claims=ask — gets the command, then pushes himself

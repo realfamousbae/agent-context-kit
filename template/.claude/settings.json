@@ -7,20 +7,129 @@
       {
         "matcher": "startup|resume|clear",
         "hooks": [
-          { "type": "command", "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" brief --hook", "timeout": 60 }
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" brief --hook",
+            "timeout": 60
+          }
         ]
       },
       {
         "matcher": "compact",
         "hooks": [
-          { "type": "command", "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" brief --hook --short", "timeout": 60 }
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" brief --hook --short",
+            "timeout": 60
+          }
         ]
       }
     ],
-    "Stop": [
+    "PreToolUse": [
       {
+        "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" check --soft", "timeout": 30 }
+          {
+            "type": "command",
+            "if": "Bash(git push*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(*deploy*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(*publish*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(* apply*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(*docker push*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(*helm *)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(*railway up*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(*release create*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "PowerShell(git push*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(*deploy*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(*publish*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(* apply*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(*docker push*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(*helm *)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(*railway up*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(*release create*)",
+            "command": "sh \"${CLAUDE_PROJECT_DIR}/.context/bin/ctx\" checkpoint --hook",
+            "timeout": 30
+          }
         ]
       }
     ]

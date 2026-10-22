@@ -2,34 +2,44 @@
 # shellcheck source=../ctx-lib.sh
 CTX_BIN=${CTX_BIN:-$(cd "$(dirname "$0")/.." && pwd)}
 . "$CTX_BIN/ctx-lib.sh"
-# ctx end — end-of-session checklist. Also arms the Claude Code Stop hook: from now on stopping with an
-# unfinished entry is blocked (until `ctx entry --finish`).
+# ctx end — session exit checkpoint.
+#   ctx end [--agent A]                         compare with the goal: shows goal, changes, claims, what the entry lacks
+#   ctx end --outcome met|partly|not-met [--pause] [--agent A]
+#                                               finish the entry with that outcome and release your claims
+#                                               (done when met, paused otherwise or with --pause); nothing is committed
 ctx_init
-agent_arg=""
-[ "${1:-}" = --agent ] && agent_arg=${2:-}
+agent_arg="" outcome="" pause=""
+while [ $# -gt 0 ]; do
+	case $1 in
+		--agent) agent_arg=${2:-}; shift ;;
+		--outcome) outcome=${2:-}; shift ;;
+		--pause) pause=1 ;;
+		*) ctx_die "unknown argument: $1 (see ctx help)" ;;
+	esac
+	shift
+done
+agent=$(ctx_agent "$agent_arg")
+[ -n "$agent_arg$CTX_AGENT" ] || agent=""
 sd=$(ctx_state_dir) && : > "$sd/ending" 2>/dev/null
-me=$(ctx_author)
-draft=$(ctx_my_draft "$( [ -n "$agent_arg$CTX_AGENT" ] && ctx_agent "$agent_arg")" 2>/dev/null)
 
-ctx_say "Session end checklist ($me):"
-if [ -n "$draft" ]; then
-	missing=$(ctx_entry_missing "$draft" | tr '\n' ' ')
-	ctx_say "1. Finish the journal draft $draft"
-	[ -n "$missing" ] && ctx_say "   still empty (required): $missing"
-	ctx_say "   then: sh .context/bin/ctx entry --finish"
-else
-	last=$(ctx_my_last_done)
-	ctx_say "1. No draft. If this session changed anything, create one: sh .context/bin/ctx entry --agent <claude|codex> --model <id>"
-	[ -n "$last" ] && ctx_say "   (or update your last entry $last if this continues the same session)"
+if [ -z "$outcome" ]; then
+	ctx_checkpoint_card end "${agent:-$(ctx_agent)}"
+	ctx_say "Then: ctx end --outcome met|partly|not-met. If the goal is not met, tell the user what is missing and ask how to proceed."
+	exit 0
 fi
-mine=$(ctx_tasks_in now | while IFS= read -r l; do [ "$(ctx_task_field "$l" owner)" = "$me" ] && printf '%s\n' "$l"; done)
-if [ -n "$mine" ]; then
-	ctx_say "2. Release your claims: sh .context/bin/ctx claim --done T-…  (or --pause T-…)"
-	printf '%s\n' "$mine" | sed 's/^/   /'
-else
-	ctx_say "2. No claims of yours in Now."
-fi
-ctx_say "3. GOTCHAS / DECISIONS / MAP updated for anything non-obvious you found?"
-ctx_say "4. Commit code and .context/ together, in the user's name, no AI co-author lines."
-ctx_say "5. Push only with the user's consent."
+ctx_outcome_valid "$outcome" && [ "$outcome" != in-progress ] || ctx_die "--outcome: met | partly | not-met"
+"${CTX_SHELL:-sh}" "$CTX_BIN/cmd/entry.sh" --finish --outcome "$outcome" ${agent:+--agent "$agent"} || exit 1
+me=$(ctx_author)
+ctx_tasks_in now | while IFS= read -r l; do
+	[ "$(ctx_task_field "$l" owner)" = "$me" ] || continue
+	case $l in (*" — paused "*) continue ;; esac
+	id=$(ctx_task_field "$l" id)
+	if [ "$outcome" = met ] && [ -z "$pause" ]; then
+		"${CTX_SHELL:-sh}" "$CTX_BIN/cmd/claim.sh" --done "$id" --no-commit >/dev/null && ctx_say "$id → Done"
+	else
+		"${CTX_SHELL:-sh}" "$CTX_BIN/cmd/claim.sh" --pause "$id" --no-commit >/dev/null && ctx_say "$id paused"
+	fi
+done
+ctx_say "Commit the code and .context/ together (in the user's name, no AI co-author lines); push only if the user agrees."
+[ "$outcome" = met ] || ctx_say "Outcome $outcome: tell the user what is missing and what you propose next."
 exit 0
