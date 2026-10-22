@@ -7,8 +7,8 @@ CTX_BIN=${CTX_BIN:-$(cd "$(dirname "$0")/.." && pwd)}
 #                      staged with code ([no-ctx] in the message or CTX_SKIP=1 bypasses)
 #   --staged           the same journal check without a message
 #   --pre-commit       pre-commit hook: secret patterns in .context/, warnings about others' claims
-#   --soft [--format claude|codex]  Stop hook of Claude Code or Codex (hook JSON on stdin); exit 2 = message
-#                      to the agent; Codex requires JSON on stdout when exiting 0, so codex prints {}
+#   --soft [--format claude|codex]  Stop hook (hook JSON on stdin). claude: exit 2 + stderr = message to the
+#                      agent. codex: always exit 0 with JSON — {} or {"decision":"block","reason":…}
 #   --range A..B [--strict]  CI report of code commits without a journal entry
 ctx_init
 
@@ -145,7 +145,17 @@ precommit)
 	exit $rc ;;
 soft)
 	ctx_hook_read
-	if [ "$format" = codex ]; then trap 'rc=$?; [ $rc -eq 0 ] && echo "{}"; exit $rc' EXIT; fi
+	if [ "$format" = codex ]; then
+		# Codex wants JSON on stdout. A continuation is {"decision":"block","reason":…} with exit 0 —
+		# not exit 2, which `powershell -Command` (Windows hooks) would turn into a plain failure.
+		reason=$(printf '%s' "$CTX_HOOK_JSON" | "${CTX_SHELL:-sh}" "$0" --soft ${agent_arg:+--agent "$agent_arg"} 2>&1 >/dev/null)
+		if [ $? -eq 2 ]; then
+			printf '{"decision":"block","reason":%s}\n' "$(printf '%s\n' "$reason" | sed 's/^ctx: //' | ctx_json_string)"
+		else
+			echo '{}'
+		fi
+		exit 0
+	fi
 	# Without hook input we cannot see stop_hook_active: never block then (no loops).
 	[ -n "$CTX_HOOK_JSON" ] || exit 0
 	[ "$(ctx_hook_field stop_hook_active)" = true ] && exit 0

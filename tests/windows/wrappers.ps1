@@ -58,7 +58,8 @@ try {
         $ok = $false; try { $j = $out | ConvertFrom-Json; $ok = $j.hookSpecificOutput.additionalContext -match '# ctx brief' } catch { }
         Check 'Codex commandWindows SessionStart gives JSON with the brief' $ok $out
         $out = ('{}' | cmd /c $hooks.hooks.Stop[0].hooks[0].commandWindows | Out-String).Trim()
-        Check 'Codex commandWindows Stop runs ({} or a reminder with exit 2)' (($LASTEXITCODE -eq 0 -and $out -eq '{}') -or $LASTEXITCODE -eq 2) $out
+        $ok = $false; try { $null = $out | ConvertFrom-Json; $ok = ($LASTEXITCODE -eq 0) } catch { }
+        Check 'Codex commandWindows Stop exits 0 with JSON' $ok $out
     }
 
     $env:CTX_BASH_EXE = 'C:\does\not\exist\bash.exe'

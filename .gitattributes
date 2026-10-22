@@ -1,5 +1,7 @@
 # Shell scripts must keep LF even on Windows checkouts with core.autocrlf=true.
 * text=auto
+# Templates ship with LF so installed records do not start with CRLF on Windows.
+template/** text eol=lf
 *.sh text eol=lf
 install.sh text eol=lf
 template/.context/bin/ctx text eol=lf
@@ -9,3 +11,5 @@ template/.githooks/* text eol=lf
 tests/** text eol=lf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+template/.context/bin/*.cmd text eol=crlf
+template/.context/bin/*.ps1 text eol=crlf

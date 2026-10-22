@@ -533,7 +533,7 @@ ctx_hook_field() {
 ctx_hook_cd() {
 	local d
 	d=$(ctx_hook_field cwd)
-	[ -n "$d" ] && [ -d "$d" ] && cd "$d" 2>/dev/null
+	if [ -n "$d" ] && [ -d "$d" ]; then cd "$d" 2>/dev/null || true; fi
 	return 0
 }
 

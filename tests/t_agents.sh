@@ -56,10 +56,12 @@ printf '%s' "$out" > "$T_TMP/codex.json"
 check "Codex SessionStart output is JSON" json_ok "$T_TMP/codex.json"
 contains "Codex SessionStart additionalContext" "$out" '"additionalContext":"# ctx brief'
 contains "Codex brief knows it is codex" "$out" "/codex"
-# Codex: Stop — JSON {} on exit 0, exit 2 with stderr to continue
+# Codex: Stop — always exit 0 with JSON: a block decision once, then {}
 cstop=$(hook_cmd "$CX" Stop 0)
 out=$(cd "$R" && printf '{"session_id":"c2","cwd":"%s","stop_hook_active":false,"turn_id":"t"}' "$R" | sh -c "$cstop" 2>/dev/null); rc=$?
-equals "Codex Stop: first reminder exits 2" "$rc" "2"
+equals "Codex Stop: reminder exits 0" "$rc" "0"
+contains "Codex Stop: reminder is a block decision" "$out" '{"decision":"block","reason":"ctx reminder'
+printf '%s' "$out" > "$T_TMP/stop.json"; check "Codex Stop: valid JSON" json_ok "$T_TMP/stop.json"
 out=$(cd "$R" && printf '{"session_id":"c2","cwd":"%s","stop_hook_active":false,"turn_id":"t"}' "$R" | sh -c "$cstop" 2>/dev/null); rc=$?
 equals "Codex Stop: then exit 0" "$rc" "0"
 equals "Codex Stop: prints {} on exit 0" "$out" "{}"
