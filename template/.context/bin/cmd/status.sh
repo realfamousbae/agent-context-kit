@@ -9,7 +9,8 @@ days=$(ctx_cfg_int status_days 14)
 case $days in ''|*[!0-9]*) ctx_die "--days needs a number" ;; esac
 
 ctx_say "ctx status — last $days days ($(ctx_author)/$(ctx_agent), language $(ctx_lang), kit $(ctx_cfg kit_version "?"))"
-report=$(ctx_commit_classes --since="$days days ago" HEAD)
+# shellcheck disable=SC2046
+report=$(ctx_commit_classes --since="$days days ago" $(ctx_since_install))
 printf '%s\n' "$report" | awk -F '\t' '
 	NF { n[$2]++; if ($2 != "context") code++ }
 	END {

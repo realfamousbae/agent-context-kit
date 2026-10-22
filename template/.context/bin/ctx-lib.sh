@@ -458,6 +458,15 @@ ctx_my_addressees() {
 
 # --- history ------------------------------------------------------------------
 
+# ctx_since_install — "SHA..HEAD" from the commit that added .context/kit.json (older history is not
+# expected to follow the protocol); empty when the kit is not committed yet.
+ctx_since_install() {
+	local c
+	c=$(git log --diff-filter=A --format=%H -- .context/kit.json 2>/dev/null | tail -n 1)
+	[ -n "$c" ] || return 0
+	if git rev-parse -q --verify "$c^" >/dev/null 2>&1; then printf '%s^..HEAD\n' "$c"; else echo HEAD; fi
+}
+
 # ctx_commit_classes GIT-LOG-ARGS... — one line per non-merge commit:
 #   sha TAB class TAB author TAB date TAB subject TAB top-level dirs
 # class: journal (code + entry), context (only .context/), noctx ([no-ctx]), skip (Ctx-Skip trailer),

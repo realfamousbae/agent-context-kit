@@ -186,7 +186,7 @@ brief_main() {
 		fi
 
 		# 6. Code commits without a journal entry since my last entry
-		range="-n 30"
+		range="-n 30 $(ctx_since_install)"
 		if [ -n "$last" ]; then
 			c=$(git log -1 --format=%H -- "$last" 2>/dev/null)
 			[ -n "$c" ] && range="$c..HEAD"

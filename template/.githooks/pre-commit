@@ -1,0 +1,14 @@
+#!/bin/sh
+# agent-context-kit pre-commit: secrets and personal data in .context/, warnings about others' claims.
+# The journal rule runs in commit-msg, where [no-ctx] in the message is visible.
+# A previous hook directory (git config ctx.chainHooks) is run afterwards.
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+if [ -f "$root/.context/bin/ctx" ]; then
+	sh "$root/.context/bin/ctx" check --pre-commit || exit 1
+fi
+prev=$(git config ctx.chainHooks 2>/dev/null)
+if [ -n "$prev" ]; then
+	case $prev in /*|?:*) ;; *) prev="$root/$prev" ;; esac
+	if [ -f "$prev/pre-commit" ]; then sh "$prev/pre-commit" "$@" || exit $?; fi
+fi
+exit 0

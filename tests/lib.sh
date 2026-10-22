@@ -130,3 +130,11 @@ json_ok() {
 	elif command -v jq >/dev/null 2>&1; then jq . "$1" >/dev/null
 	else return 0; fi
 }
+
+# enable_hooks DIR — copy the kit's git hooks and switch them on (what install.sh does).
+enable_hooks() {
+	mkdir -p "$1/.githooks"
+	cp "$KIT_DIR/template/.githooks/pre-commit" "$KIT_DIR/template/.githooks/commit-msg" "$1/.githooks/"
+	chmod +x "$1/.githooks/pre-commit" "$1/.githooks/commit-msg"
+	git -C "$1" config core.hooksPath .githooks
+}
