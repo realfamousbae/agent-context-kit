@@ -38,7 +38,7 @@ mkdir -p "$C/src/export"; echo x > "$C/src/export/a.py"
 commit_all "$C" "export"
 check "bob pushes his branch" git -C "$C" push -q -u origin feature/export
 out=$(CTX_NO_FETCH=0 CTX_DEBUG=1 ctx "$A" brief 2>&1)
-contains "branch TASKS.md has the claim" "$(git -C "$A" show origin/feature/export:.context/TASKS.md)" "Export — @bob"
+contains "branch TASKS.md has the claim" "$(MSYS2_ARG_CONV_EXCL='*' git -C "$A" show origin/feature/export:.context/TASKS.md)" "Export — @bob"
 contains "alice fetched bob's branch" "$(git -C "$A" branch -r)" "origin/feature/export"
 contains "alice sees bob's branch entry" "$out" "[branch origin/feature/export]"
 contains "alice sees bob's branch claim" "$out" "Export — @bob/human"

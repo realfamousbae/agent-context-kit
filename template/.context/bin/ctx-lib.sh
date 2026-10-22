@@ -6,6 +6,12 @@
 # (gawk counts characters in UTF-8 locales, mawk and BWK awk count bytes).
 LC_ALL=C
 export LC_ALL
+# Git Bash (MSYS2) rewrites arguments that look like POSIX paths when it starts native programs;
+# "origin/x:.context/TASKS.md" would be mangled into a Windows path list. ctx only passes relative
+# paths to git, so conversion is switched off.
+MSYS_NO_PATHCONV=1
+MSYS2_ARG_CONV_EXCL='*'
+export MSYS_NO_PATHCONV MSYS2_ARG_CONV_EXCL
 
 ctx_say() { printf '%s\n' "$*"; }
 ctx_err() { printf 'ctx: %s\n' "$*" >&2; }
