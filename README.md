@@ -49,6 +49,7 @@ CLAUDE.md              @AGENTS.md
 .gitattributes         LF for scripts, CRLF for .cmd/.ps1, merge=union for append-only files
 .claude/settings.json  SessionStart → ctx brief, Stop → ctx check --soft, env CTX_AGENT=claude (merged)
 .claude/commands/      /ctx-start, /ctx-end, /ctx-compact, /ctx-ask
+.codex/hooks.json      SessionStart → ctx brief, Stop → reminder (Codex asks you to trust them once: /hooks)
 .githooks/             pre-commit (secrets, claim warnings), commit-msg (journal rule)
 .github/workflows/     ctx.yml — only with --ci: pull-request report of commits without a journal entry
 .context/
@@ -90,7 +91,10 @@ Users can also just say "ctx start", "ctx end", "ctx compact", "ctx status", "ct
 | Everyone (git) | `pre-commit`: secret and personal-data patterns in `.context/`; warning when you touch someone else's claimed files |
 | Everyone (CI) | `ctx check --range base..HEAD` in pull requests (`--ci`) catches `--no-verify` |
 | Claude Code | SessionStart hook injects the brief; after compaction, the short brief and your draft. Stop hook reminds once per session about the journal, blocks only after `ctx end` with an unfinished entry |
-| Codex | The ctx block at the top of `AGENTS.md`; the git hooks and CI above |
+| Codex | The ctx block at the top of `AGENTS.md`; `.codex/hooks.json` with SessionStart → brief and Stop → reminder (approve once with `/hooks`); the git hooks and CI above |
+
+Details and sources for every agent behaviour the kit relies on (hook output caps, Stop semantics, sandboxes,
+Windows shells): [docs/agents.md](docs/agents.md).
 
 The kit never pushes anything except claims with `push_claims: "auto"`, and never adds AI attribution.
 

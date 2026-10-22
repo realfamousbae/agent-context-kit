@@ -35,6 +35,12 @@ if ! is_windows && [ "$(id -u)" != 0 ]; then
 	chmod -R u+w "$R/.git"
 	equals "read-only .git: exit 0" "$rc" "0"
 	contains "read-only .git: still prints tasks header" "$out" "# ctx brief"
+	# a read-only sandbox (Codex -s read-only): nothing is writable, not even the temp dir
+	chmod -R a-w "$R"
+	out=$(TMPDIR="$T_TMP/no-such-dir" ctx "$R" brief); rc=$?
+	chmod -R u+w "$R"
+	equals "read-only sandbox: exit 0" "$rc" "0"
+	contains "read-only sandbox: brief still printed" "$out" "# ctx brief"
 else
 	ok "read-only .git: skipped on this platform"
 fi
