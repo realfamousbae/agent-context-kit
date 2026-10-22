@@ -501,3 +501,49 @@ ctx_commit_classes() {
 			}
 			END { out() }'
 }
+
+# --- agent hooks (Claude Code, Codex) ----------------------------------------------
+
+# ctx_hook_read — read the hook's JSON input from stdin (if any) into CTX_HOOK_JSON.
+ctx_hook_read() {
+	CTX_HOOK_JSON=""
+	[ -t 0 ] || CTX_HOOK_JSON=$(cat 2>/dev/null | tr -d '\r\n')
+}
+
+# ctx_hook_field NAME — top-level string/boolean field of CTX_HOOK_JSON, JSON escapes decoded.
+ctx_hook_field() {
+	printf '%s' "$CTX_HOOK_JSON" | awk -v k="\"$1\"" '
+		{
+			i = index($0, k); if (!i) exit
+			s = substr($0, i + length(k)); sub(/^[ \t]*:[ \t]*/, "", s)
+			if (substr(s, 1, 1) != "\"") { sub(/[ \t]*[,}].*$/, "", s); print s; exit }
+			out = ""
+			for (j = 2; j <= length(s); j++) {
+				c = substr(s, j, 1)
+				if (c == "\\") { j++; c = substr(s, j, 1); if (c == "n") c = "\n"; else if (c == "t") c = "\t"; out = out c; continue }
+				if (c == "\"") break
+				out = out c
+			}
+			print out
+		}'
+}
+
+# ctx_hook_cd — move to the session's working directory from the hook input (worktrees:
+# CLAUDE_PROJECT_DIR keeps pointing at the main checkout, the "cwd" field follows the session).
+ctx_hook_cd() {
+	local d
+	d=$(ctx_hook_field cwd)
+	[ -n "$d" ] && [ -d "$d" ] && cd "$d" 2>/dev/null
+	return 0
+}
+
+# ctx_json_string — stdin as one JSON string literal (for hook JSON output).
+ctx_json_string() {
+	awk '
+		BEGIN { printf "\"" }
+		{
+			gsub(/\\/, "\\\\"); gsub(/"/, "\\\""); gsub(/\t/, "\\t"); gsub(/\r/, "")
+			printf "%s%s", (NR > 1 ? "\\n" : ""), $0
+		}
+		END { printf "\"" }'
+}

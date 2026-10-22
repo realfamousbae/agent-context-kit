@@ -7,11 +7,12 @@ CTX_BIN=${CTX_BIN:-$(cd "$(dirname "$0")/.." && pwd)}
 #                      staged with code ([no-ctx] in the message or CTX_SKIP=1 bypasses)
 #   --staged           the same journal check without a message
 #   --pre-commit       pre-commit hook: secret patterns in .context/, warnings about others' claims
-#   --soft             Claude Code Stop hook (reads hook JSON on stdin); exit 2 = message to the agent
+#   --soft [--format claude|codex]  Stop hook of Claude Code or Codex (hook JSON on stdin); exit 2 = message
+#                      to the agent; Codex requires JSON on stdout when exiting 0, so codex prints {}
 #   --range A..B [--strict]  CI report of code commits without a journal entry
 ctx_init
 
-mode="" msg_file="" range="" strict=""
+mode="" msg_file="" range="" strict="" format=claude agent_arg=""
 while [ $# -gt 0 ]; do
 	case $1 in
 		--commit-msg) mode=msg; msg_file=${2:-}; shift ;;
@@ -20,6 +21,8 @@ while [ $# -gt 0 ]; do
 		--soft) mode=soft ;;
 		--range) mode=range; range=${2:-}; shift ;;
 		--strict) strict=1 ;;
+		--format) format=${2:-claude}; shift ;;
+		--agent) agent_arg=${2:-}; shift ;;
 		*) ctx_die "unknown option: $1 (see ctx help)" ;;
 	esac
 	shift
@@ -141,19 +144,27 @@ precommit)
 	fi
 	exit $rc ;;
 soft)
-	input=""
-	[ -t 0 ] || input=$(cat 2>/dev/null)
-	field() { printf '%s' "$input" | tr -d '\n\r' | sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"*\([^\",}]*\).*/\1/p"; }
-	[ "$(field stop_hook_active)" = true ] && exit 0
-	sid=$(field session_id | tr -c 'A-Za-z0-9_-' '_')
+	ctx_hook_read
+	if [ "$format" = codex ]; then trap 'rc=$?; [ $rc -eq 0 ] && echo "{}"; exit $rc' EXIT; fi
+	# Without hook input we cannot see stop_hook_active: never block then (no loops).
+	[ -n "$CTX_HOOK_JSON" ] || exit 0
+	[ "$(ctx_hook_field stop_hook_active)" = true ] && exit 0
+	if [ -n "$(ctx_hook_field cwd)" ]; then
+		ctx_hook_cd
+		r=$(git rev-parse --show-toplevel 2>/dev/null) && [ -d "$r/.context" ] && cd "$r" || exit 0
+		CTX_GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+		case $CTX_GIT_DIR in /*|?:*) ;; *) CTX_GIT_DIR="$r/$CTX_GIT_DIR" ;; esac
+	fi
+	sid=$(ctx_hook_field session_id | tr -c 'A-Za-z0-9_-' '_')
 	[ -n "$sid" ] || sid=nosession
 	sd=$(ctx_state_dir)
-	draft=$(ctx_my_draft "$(ctx_agent)" 2>/dev/null)
+	agent=$(ctx_agent "$agent_arg")
+	draft=$(ctx_my_draft "$agent" 2>/dev/null)
 	if [ -n "$sd" ] && [ -f "$sd/ending" ]; then
 		if [ -z "$draft" ]; then
 			last=$(ctx_my_last_done)
 			[ -n "$last" ] && exit 0
-			ctx_err "ctx end was declared but there is no journal entry. Create it: sh .context/bin/ctx entry --agent claude --model <id>"
+			ctx_err "ctx end was declared but there is no journal entry. Create it: sh .context/bin/ctx entry --agent $agent --model <id>"
 			exit 2
 		fi
 		missing=$(ctx_entry_missing "$draft")
@@ -167,7 +178,7 @@ soft)
 	[ -n "$changed" ] || exit 0
 	if [ -n "$draft" ] && ctx_entry_has_content "$draft"; then exit 0; fi
 	# a finished entry of mine that is not committed yet belongs to this session
-	git status --porcelain -- .context/journal 2>/dev/null | cut -c4- | while IFS= read -r f; do
+	git status --porcelain -- .context/journal 2>/dev/null | grep -v -e '^D' -e '^.D' | cut -c4- | while IFS= read -r f; do
 		[ "$(ctx_entry_author "$f")" = "$(ctx_author)" ] && echo y
 	done | grep -q y && exit 0
 	if [ -n "$sd" ]; then
@@ -179,7 +190,7 @@ soft)
 	if [ -n "$draft" ]; then
 		ctx_err "ctx reminder (once per session): you changed code but your journal draft $draft is empty. Write what you learned into it now; it must be finished (ctx entry --finish) before committing."
 	else
-		ctx_err "ctx reminder (once per session): you changed code but have no journal draft. Run: sh .context/bin/ctx entry --agent claude --model <your model id> — and record findings as you go."
+		ctx_err "ctx reminder (once per session): you changed code but have no journal draft. Run: sh .context/bin/ctx entry --agent $agent --model <your model id> — and record findings as you go."
 	fi
 	exit 2 ;;
 range)

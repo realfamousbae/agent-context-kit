@@ -101,12 +101,12 @@ remove_block() {
 	else cat "$tmp" > "$1"; rm -f "$tmp"; changed "$1"; fi
 }
 
-# --- .claude/settings.json: merge our hooks and env with jq, python, or print instructions --------
+# --- .claude/settings.json and .codex/hooks.json: merge our hooks (and env) with jq, python, or print instructions
 
 PY_MERGE='
 import json, os, sys
 path, frag_path, mode = sys.argv[1], sys.argv[2], sys.argv[3]
-def ours(h): return ".context/bin/ctx" in (h.get("command") or "")
+def ours(h): return ".context/bin/ctx" in (h.get("command") or "") + (h.get("commandWindows") or "")
 data = {}
 if os.path.exists(path) and open(path, encoding="utf-8").read().strip():
     data = json.load(open(path, encoding="utf-8"))
@@ -126,7 +126,7 @@ for ev in sorted(set(hooks) | set(frag["hooks"])):
 if hooks: data["hooks"] = hooks
 else: data.pop("hooks", None)
 env = data.get("env") or {}
-for k, v in frag["env"].items():
+for k, v in frag.get("env", {}).items():
     if mode == "install": env.setdefault(k, v)
     elif env.get(k) == v: env.pop(k)
 if env: data["env"] = env
@@ -141,7 +141,7 @@ print("changed")
 '
 
 JQ_MERGE='
-def ours: (.command // "") | contains(".context/bin/ctx");
+def ours: ((.command // "") + (.commandWindows // "")) | contains(".context/bin/ctx");
 def strip: map(.hooks = ((.hooks // []) | map(select(ours | not)))) | map(select((.hooks | length) > 0));
 ($frag[0]) as $f
 | (.hooks // {}) as $h
@@ -150,7 +150,7 @@ def strip: map(.hooks = ((.hooks // []) | map(select(ours | not)))) | map(select
     ((($h[$e] // []) | strip) + (if $mode == "install" then ($f.hooks[$e] // []) else [] end)) as $g
     | if ($g | length) > 0 then .[$e] = $g else . end))
 | if (.hooks | length) == 0 then del(.hooks) else . end
-| .env = (reduce ($f.env | to_entries[]) as $kv ((.env // {});
+| .env = (reduce (($f.env // {}) | to_entries[]) as $kv ((.env // {});
     if $mode == "install" then (if has($kv.key) then . else .[$kv.key] = $kv.value end)
     elif .[$kv.key] == $kv.value then del(.[$kv.key]) else . end))
 | if (.env | length) == 0 then del(.env) else . end
@@ -165,12 +165,16 @@ find_python() {
 	return 1
 }
 
-merge_settings() { # merge_settings install|uninstall
-	local f frag py tmp out
-	f=.claude/settings.json frag="$TPL/.claude/settings.json"
+merge_settings() { # merge_settings install|uninstall [FILE FRAGMENT]
+	local f frag py tmp out dir
+	f=${2:-.claude/settings.json} frag=${3:-"$TPL/.claude/settings.json"}
+	dir=$(dirname "$f")
 	if [ "$1" = uninstall ] && [ ! -f "$f" ]; then return 0; fi
+	if [ "$1" = install ] && ! { mkdir -p "$dir" 2>/dev/null && [ -w "$dir" ]; }; then
+		warn "$dir is not writable (an agent sandbox protects it?). Ask the user to merge $frag into $f."
+		return 0
+	fi
 	if [ "${CTX_INSTALL_NO_JQ:-}" != 1 ] && command -v jq >/dev/null 2>&1; then
-		mkdir -p .claude
 		tmp=$(mktemp) || die "mktemp failed"
 		if [ -s "$f" ]; then cp "$f" "$tmp.in"; else echo '{}' > "$tmp.in"; fi
 		if jq --arg mode "$1" --slurpfile frag "$frag" "$JQ_MERGE" "$tmp.in" > "$tmp" 2>/dev/null; then
@@ -186,7 +190,6 @@ merge_settings() { # merge_settings install|uninstall
 		warn "jq could not parse $f — trying python"
 	fi
 	if py=$(find_python); then
-		mkdir -p .claude
 		# shellcheck disable=SC2086
 		if out=$($py -c "$PY_MERGE" "$f" "$frag" "$1" 2>&1); then
 			case $out in changed) changed "$f" ;; removed) say "  - $f" ;; esac
@@ -195,7 +198,7 @@ merge_settings() { # merge_settings install|uninstall
 		warn "python could not merge $f: $out"
 	fi
 	if [ "$1" = install ]; then
-		if [ ! -f "$f" ] || [ ! -s "$f" ]; then mkdir -p .claude; cp "$frag" "$f"; say "  + $f"; return 0; fi
+		if [ ! -f "$f" ] || [ ! -s "$f" ]; then cp "$frag" "$f"; say "  + $f"; return 0; fi
 		grep -q '.context/bin/ctx' "$f" && return 0
 		warn "neither jq nor python is available to merge $f. Add this by hand (hooks and env):"
 		cat "$frag"
@@ -300,6 +303,8 @@ if [ "$mode" = uninstall ]; then
 		rm -f "$tmp"
 	fi
 	merge_settings uninstall
+	merge_settings uninstall .codex/hooks.json "$TPL/.codex/hooks.json"
+	rmdir .codex 2>/dev/null
 	for c in "$TPL"/.claude/commands/*.md; do
 		[ -f ".claude/commands/$(basename "$c")" ] && rm -f ".claude/commands/$(basename "$c")" && say "  - .claude/commands/$(basename "$c")"
 	done
@@ -393,6 +398,7 @@ for f in MAP.md DECISIONS.md GOTCHAS.md TASKS.md QUESTIONS.md; do
 done
 
 # agent entry points
+[ -f AGENTS.override.md ] && warn "AGENTS.override.md exists: Codex reads it INSTEAD of AGENTS.md, so it will not see the ctx block. Add the block there too or remove the override."
 replace_block AGENTS.md '<!-- ctx:begin' '<!-- ctx:end -->' "$KIT/snippets/agents-block.md" top
 if [ ! -f CLAUDE.md ]; then
 	printf '@AGENTS.md\n' > CLAUDE.md && say "  + CLAUDE.md"
@@ -400,6 +406,7 @@ elif ! tr -d '\r' < CLAUDE.md | grep -q -x '@AGENTS.md'; then
 	tmp=$(mktemp); { printf '@AGENTS.md\n\n'; cat CLAUDE.md; } > "$tmp" && cat "$tmp" > CLAUDE.md; rm -f "$tmp"; changed "CLAUDE.md (@AGENTS.md)"
 fi
 merge_settings install
+merge_settings install .codex/hooks.json "$TPL/.codex/hooks.json"
 for c in "$TPL"/.claude/commands/*.md; do put "$c" ".claude/commands/$(basename "$c")" "$force"; done
 
 # git hooks (never overwrite someone else's hook of the same name)

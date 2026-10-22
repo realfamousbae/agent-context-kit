@@ -141,3 +141,14 @@ enable_hooks() {
 
 # snapshot DIR — checksum of every file outside .git (to prove a re-run changed nothing).
 snapshot() { (cd "$1" && find . -path ./.git -prune -o -type f -print | sort | while IFS= read -r f; do cksum "$f"; done; git config --local --list | sort); }
+
+# hook_cmd FILE EVENT INDEX [KEY] — the command string of a hook in a settings/hooks JSON file.
+hook_cmd() {
+	for _py in python3 python; do
+		if command -v "$_py" >/dev/null 2>&1 && "$_py" -c 'import json' >/dev/null 2>&1; then
+			"$_py" -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["hooks"][sys.argv[2]][int(sys.argv[3])]["hooks"][0][sys.argv[4]])' "$1" "$2" "$3" "${4:-command}"
+			return
+		fi
+	done
+	return 1
+}

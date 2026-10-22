@@ -3,6 +3,7 @@
   "language": "en",
   "brief_budget_bytes": 24000,
   "brief_short_budget_bytes": 8000,
+  "hook_budget_bytes": 9500,
   "recent_entries": 5,
   "compact_threshold_entries": 30,
   "compact_keep_entries": 10,

@@ -1,9 +1,12 @@
 #!/bin/sh
-# ctx brief [--short] [--budget BYTES] [--no-fetch] [--agent A]
+# ctx brief [--short] [--budget BYTES] [--no-fetch] [--agent A] [--hook [--format claude|codex]]
 # Start-of-session summary within a byte budget, highest priority first:
 #   warnings, questions to me, tasks in progress, gotchas, others' entries since my last one (all branches),
 #   code commits without a journal entry, recent entries, decisions index, map.
 # --short (after context compaction): warnings, questions, tasks, gotchas and my current draft.
+# --hook: called by an agent's SessionStart hook. Reads the hook JSON on stdin (cwd, source), uses
+#   hook_budget_bytes (Claude Code caps hook context at 10,000 characters), and with --format codex
+#   prints {"hookSpecificOutput": {"additionalContext": …}} as Codex expects.
 # It never fails: any error ends the output early, the exit code is always 0.
 # shellcheck source=../ctx-lib.sh
 CTX_BIN=${CTX_BIN:-$(cd "$(dirname "$0")/.." && pwd)}
@@ -11,17 +14,24 @@ CTX_BIN=${CTX_BIN:-$(cd "$(dirname "$0")/.." && pwd)}
 GIT_OPTIONAL_LOCKS=0
 export GIT_OPTIONAL_LOCKS
 
-short="" budget="" fetch=1 agent_arg=""
+short="" budget="" fetch=1 agent_arg="" hook="" format=claude
 while [ $# -gt 0 ]; do
 	case $1 in
 		--short) short=1 ;;
 		--budget) budget=${2:-}; shift ;;
 		--no-fetch) fetch="" ;;
 		--agent) agent_arg=${2:-}; shift ;;
+		--hook) hook=1 ;;
+		--format) format=${2:-claude}; shift ;;
 	esac
 	shift
 done
 [ "${CTX_NO_FETCH:-}" = 1 ] && fetch=""
+if [ -n "$hook" ]; then
+	ctx_hook_read
+	ctx_hook_cd
+	[ "$(ctx_hook_field source)" = compact ] && short=1
+fi
 
 # render_entry NAME LABEL KEYONLY < entry — compact rendering of one journal entry.
 render_entry() {
@@ -60,6 +70,7 @@ brief_main() {
 	lang=$(ctx_lang)
 	branch=$(git symbolic-ref --short -q HEAD 2>/dev/null || echo "detached HEAD")
 	if [ -n "$short" ]; then budget=${budget:-$(ctx_cfg_int brief_short_budget_bytes 8000)}
+	elif [ -n "$hook" ] && [ "$format" = claude ]; then budget=${budget:-$(ctx_cfg_int hook_budget_bytes 9500)}
 	else budget=${budget:-$(ctx_cfg_int brief_budget_bytes 24000)}; fi
 	case $budget in ''|*[!0-9]*) budget=24000 ;; esac
 
@@ -254,10 +265,20 @@ brief_main() {
 		fi
 	done
 	[ -n "${omitted:-}" ] && echo "[Omitted to fit the brief budget: $omitted — read them in .context/]"
+	if [ -n "$hook" ] && [ "$used" -ge "$budget" ] || [ -n "${omitted:-}" ]; then
+		[ -n "$hook" ] && echo "Full brief: sh .context/bin/ctx brief --no-fetch"
+	fi
 	return 0
 }
 
 # CTX_DEBUG=1 keeps stderr for diagnosing; normally hook output must stay clean.
-if [ "${CTX_DEBUG:-}" = 1 ]; then ( set -x; brief_main ) || echo "[ctx brief stopped early — read .context/ files directly]"
-else ( brief_main ) 2>/dev/null || echo "[ctx brief stopped early — read .context/ files directly]"; fi
+run() {
+	if [ "${CTX_DEBUG:-}" = 1 ]; then ( set -x; brief_main ) || echo "[ctx brief stopped early — read .context/ files directly]"
+	else ( brief_main ) 2>/dev/null || echo "[ctx brief stopped early — read .context/ files directly]"; fi
+}
+if [ "$format" = codex ]; then
+	printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":%s}}\n' "$(run | ctx_json_string)"
+else
+	run
+fi
 exit 0

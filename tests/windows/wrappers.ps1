@@ -49,6 +49,18 @@ try {
     $out = cmd /c '.context\bin\ctx.cmd entry --agent codex --model test-model' 2>&1 | Out-String
     Check 'ctx.cmd entry' ($LASTEXITCODE -eq 0 -and $out -match 'alice-codex\.md') $out
 
+    if (Test-Path '.codex\hooks.json') {
+        $hooks = Get-Content '.codex\hooks.json' -Raw | ConvertFrom-Json
+        New-Item -ItemType Directory -Force -Path 'src\deep' | Out-Null
+        Push-Location 'src\deep'
+        $out = '{}' | cmd /c $hooks.hooks.SessionStart[0].hooks[0].commandWindows | Out-String
+        Pop-Location
+        $ok = $false; try { $j = $out | ConvertFrom-Json; $ok = $j.hookSpecificOutput.additionalContext -match '# ctx brief' } catch { }
+        Check 'Codex commandWindows SessionStart gives JSON with the brief' $ok $out
+        $out = ('{}' | cmd /c $hooks.hooks.Stop[0].hooks[0].commandWindows | Out-String).Trim()
+        Check 'Codex commandWindows Stop runs ({} or a reminder with exit 2)' (($LASTEXITCODE -eq 0 -and $out -eq '{}') -or $LASTEXITCODE -eq 2) $out
+    }
+
     $env:CTX_BASH_EXE = 'C:\does\not\exist\bash.exe'
     $out = & .\.context\bin\ctx.ps1 version | Out-String
     Check 'bad CTX_BASH_EXE falls back to discovery' ($LASTEXITCODE -eq 0) $out
