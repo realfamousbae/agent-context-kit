@@ -3,7 +3,7 @@
 CTX_BIN=${CTX_BIN:-$(cd "$(dirname "$0")/.." && pwd)}
 . "$CTX_BIN/ctx-lib.sh"
 # ctx claim — claim a task and its area in .context/TASKS.md, commit, push per push_claims.
-#   ctx claim T-… --area "src/upload/ tests/test_upload*" [--push|--no-push] [--force] [--agent A]
+#   ctx claim T-… --area "src/upload/ tests/test_upload*" [--push|--no-push|--no-commit] [--force] [--agent A]
 #   ctx claim --new "Title" --area "…"
 #   ctx claim --done T-…  |  ctx claim --pause T-…
 ctx_init

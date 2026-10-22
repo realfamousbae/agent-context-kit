@@ -10,6 +10,13 @@ cmd=${1:-help}
 
 case $cmd in
 	brief|start|checkpoint|claim|entry|ask|check|status|compact|config|end|id|migrate)
+		case ${1:-} in
+			-h|--help|help)   # usage = the comment block at the top of the subcommand
+				awk 'NR == 1 { next }
+					/^#/ && !/shellcheck/ { sub(/^# ?/, ""); print; got = 1; next }
+					got { exit }' "$CTX_BIN/cmd/$cmd.sh"
+				exit 0 ;;
+		esac
 		exec "${CTX_SHELL:-sh}" "$CTX_BIN/cmd/$cmd.sh" "$@" ;;
 	version|--version)
 		sed -n 's/.*"kit_version"[ ]*:[ ]*"\([^"]*\)".*/\1/p' "$CTX_BIN/../kit.json" 2>/dev/null ;;

@@ -4,7 +4,6 @@
 <!-- - [ ] T-YYYYMMDD-ii-n Title — @alice/claude — since 2026-10-22 — area: `src/upload/`, `tests/test_upload*` -->
 
 ## Now <!-- ctx:now -->
-- [ ] T-20261022-rf-15 Fix frictions found in a live Codex run: --help for every command, ctx — @realfamousbae/claude — since 2026-10-22 — area: `template/.context/bin/`, `tests/`, `.context/`
 
 ## Next <!-- ctx:next -->
 - [ ] T-20261022-rf-13 Token overhead for cheap subscriptions: measure per-session cost of the kit in the pilot (brief, claim/entry/finish calls, Stop reminder) and decide on a lean profile (smaller brief budgets, shorter AGENTS block)
@@ -25,3 +24,4 @@
 - [x] T-20261022-rf-1 Dogfood the kit in its own repository — @realfamousbae/claude — 2026-10-22
 - [x] T-20261022-rf-9 Find out why .codex/hooks.json does not inject the brief in `codex exec` 0.163 (macOS), then verify Codex hooks live on Windows (commandWindows is only exercised from PowerShell in CI) — @realfamousbae/claude — 2026-10-22
 - [x] T-20261022-rf-14 Redesign: context at session entry, exit and checkpoints only — @realfamousbae/claude — 2026-10-22
+- [x] T-20261022-rf-15 Fix frictions found in a live Codex run: --help for every command, ctx — @realfamousbae/claude — 2026-10-22

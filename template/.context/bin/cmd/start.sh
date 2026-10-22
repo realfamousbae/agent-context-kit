@@ -4,7 +4,9 @@ CTX_BIN=${CTX_BIN:-$(cd "$(dirname "$0")/.." && pwd)}
 . "$CTX_BIN/ctx-lib.sh"
 # ctx start — session entry in one call: journal draft with the goal (and plan), plus a claim when --area is given.
 #   ctx start --goal "what and how we know it is done" [--plan "steps"] [T-… | --new "Title"] [--area "paths"]
-#             [--agent claude|codex] [--model ID] [--push|--no-push]
+#             [--agent claude|codex] [--model ID] [--push|--no-push|--no-commit]
+# --no-commit: write the claim into TASKS.md without committing it (e.g. the user said "do not commit",
+#   or the sandbox cannot write .git); it then travels with your next commit.
 ctx_init
 goal="" plan="" task="" title="" area="" agent_arg="" model_arg="" push=""
 while [ $# -gt 0 ]; do
@@ -15,7 +17,7 @@ while [ $# -gt 0 ]; do
 		--area) area=${2:-}; shift ;;
 		--agent) agent_arg=${2:-}; shift ;;
 		--model) model_arg=${2:-}; shift ;;
-		--push|--no-push) push=$1 ;;
+		--push|--no-push|--no-commit) push=$1 ;;
 		T-*) task=$1 ;;
 		*) ctx_die "unknown argument: $1 (see ctx help)" ;;
 	esac
@@ -25,7 +27,9 @@ done
 agent=$(ctx_agent "$agent_arg")
 
 if [ -n "$area" ] || [ -n "$task" ] || [ -n "$title" ]; then
-	[ -n "$task$title" ] || title=$(printf '%s' "$goal" | tr '\n' ' ' | cut -c1-70)
+	# title from the goal: first clause, cut at a word boundary
+	[ -n "$task$title" ] || title=$(printf '%s' "$goal" | tr '\n' ' ' | sed 's/[;:.] .*$//' |
+		awk '{ if (length($0) <= 70) { print; exit } s = substr($0, 1, 70); sub(/ [^ ]*$/, "", s); print s "…" }')
 	set -- --agent "$agent" ${push:+"$push"}
 	[ -n "$area" ] && set -- "$@" --area "$area"
 	if [ -n "$task" ]; then set -- "$task" "$@"; else set -- --new "$title" "$@"; fi

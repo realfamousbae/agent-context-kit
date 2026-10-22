@@ -42,6 +42,21 @@ cp "$R/$d" "$T_TMP/old.md"
 awk '!/ctx:goal|make the thing work|ctx:plan/' "$T_TMP/old.md" | sed 's/^status: done/status: draft/' > "$R/$d"
 check "entry without Goal anchor finishes (0.1 compatibility)" ctx "$R" entry --finish --agent claude
 
+# --help for every command (a live Codex run read the sources to find the syntax)
+for c in start end checkpoint claim entry ask brief; do
+	out=$(ctx "$R" "$c" --help); rc=$?
+	[ $rc -eq 0 ] && [ -n "$out" ] && ok "ctx $c --help" || not_ok "ctx $c --help" "rc=$rc $out"
+done
+contains "end --help names --outcome" "$(ctx "$R" end --help)" "--outcome met|partly|not-met"
+
+# ctx start --no-commit keeps the claim out of git; long goals give titles cut at a word boundary
+head_before=$(git -C "$R" rev-parse HEAD)
+ctx "$R" start --goal "Add add(a, b) to src/calc.py with a test in tests/test_calc.py and keep the old sub function untouched; tests pass" --area "src/calc.py" --no-commit >/dev/null 2>&1
+equals "start --no-commit: no claim commit" "$(git -C "$R" rev-parse HEAD)" "$head_before"
+t=$(grep 'src/calc.py' "$R/.context/TASKS.md")
+contains "title ends at a word boundary" "$t" "tests/test_calc.py and… —"
+not_contains "title stops before the first clause break" "$t" "tests pass"
+
 # upgrade from 0.1: Stop hook removed, PreToolUse added, AGENTS block v1 replaced (not duplicated)
 U="$T_TMP/u"; mkrepo "$U"; mkdir -p "$U/.claude" "$U/.codex"
 cat > "$U/.claude/settings.json" <<'JSON'
