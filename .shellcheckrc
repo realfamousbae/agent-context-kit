@@ -1,0 +1,2 @@
+# `local` is not POSIX but every target shell supports it (dash, bash 3.2 in sh mode, busybox, Git Bash).
+disable=SC3043
