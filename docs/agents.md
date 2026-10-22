@@ -40,8 +40,10 @@ Source: https://developers.openai.com/codex/llms-full.txt (hooks, AGENTS.md, san
   `C:\…` project dir). Codex `commandWindows` runs through `cmd /c` + PowerShell in Windows CI.
 - Live on macOS: `claude -p` in a fresh repository retold the other participant's entry, claim, gotcha and the
   question addressed to it from the SessionStart hook alone.
-- Live on macOS: `codex exec -s read-only` (0.163.0) followed AGENTS.md, ran `ctx brief` itself and retold the same.
-  The project's `.codex/hooks.json` did **not** inject the brief in `codex exec`, even with
-  `--dangerously-bypass-hook-trust` and the project marked trusted; why is not known yet (T-20261022-rf-9).
-  Until then AGENTS.md is what makes Codex read the context.
+- Live on macOS, Codex 0.163.0, `codex exec -s read-only` in a **trusted** project: the SessionStart hook injected the
+  brief (recorded in the session log as a developer message, `hooks.additional_context`), and Codex answered
+  questions about the other participant's claim and gotcha without running any command.
+- In an **untrusted** project Codex ignores `.codex/` entirely (documented), so the hook does not run; Codex then
+  follows AGENTS.md and runs `ctx brief` itself — also verified live. Trust comes from the folder-trust prompt of the
+  Codex TUI, or `[projects."<abs path>"] trust_level = "trusted"` in `~/.codex/config.toml`.
 - Not run live: a real `/compact` (only simulated with `source: compact`), Claude Code and Codex sessions on Windows.

@@ -69,8 +69,9 @@ the chosen language, what you could not determine (put it under "For humans"). T
 Show `git status` and the diff summary, the chosen language and the identity. Commit only after the user agrees —
 in the user's name, without AI co-author lines. One commit: the kit files, the filled-in context and the entry.
 
-Tell the user: Claude Code asks to trust the folder once (then its hooks run); Codex lists `.codex/hooks.json`
-for review — approve it with `/hooks`, and again after a kit update changes it.
+Tell the user: Claude Code asks to trust the folder once (then its hooks run). Codex loads `.codex/hooks.json` only
+in a trusted project (it asks when the folder is first opened) and lists the hooks for review — approve them with
+`/hooks`, and again after a kit update changes them. Without that, Codex still reads the context through AGENTS.md.
 
 Every other participant, after pulling, runs the installer once in their own clone (it enables the hooks
 and sets `ctx.author` / `ctx.initials`):
