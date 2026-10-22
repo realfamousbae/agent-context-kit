@@ -4,6 +4,7 @@
 <!-- - [ ] T-YYYYMMDD-ii-n Title — @alice/claude — since 2026-10-22 — area: `src/upload/`, `tests/test_upload*` -->
 
 ## Now <!-- ctx:now -->
+- [ ] T-20261022-rf-15 Fix frictions found in a live Codex run: --help for every command, ctx — @realfamousbae/claude — since 2026-10-22 — area: `template/.context/bin/`, `tests/`, `.context/`
 
 ## Next <!-- ctx:next -->
 - [ ] T-20261022-rf-13 Token overhead for cheap subscriptions: measure per-session cost of the kit in the pilot (brief, claim/entry/finish calls, Stop reminder) and decide on a lean profile (smaller brief budgets, shorter AGENTS block)
