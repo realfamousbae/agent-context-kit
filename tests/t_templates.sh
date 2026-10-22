@@ -25,8 +25,9 @@ contains "agents block ends with marker" "$(tail -n 1 "$KIT_DIR/snippets/agents-
 contains "agents block names Windows wrapper" "$block" 'ctx.cmd brief'
 
 # Kit-owned files are English: no Cyrillic outside i18n/ru and tests.
-cyr=$(LC_ALL=C grep -rl "$(printf '\320')" "$KIT_DIR/template/.context" "$KIT_DIR/snippets" 2>/dev/null || true)
-equals "no Cyrillic in kit-owned files" "$cyr" ""
+has_cyr() { find "$@" -type f | while IFS= read -r f; do LC_ALL=C awk '/[\320\321]/ { print FILENAME; exit }' "$f"; done; }
+equals "no Cyrillic in kit-owned files" "$(has_cyr "$KIT_DIR/template/.context" "$KIT_DIR/snippets")" ""
+contains "Cyrillic detector works" "$(has_cyr "$KIT_DIR/template/i18n/ru")" "MAP.md"
 
 # kit.json is flat: one "key": value per line (ctx config relies on it).
 bad=$(awk 'NR > 1 && !/^}$/ && !/^  "[a-z_]+": ("[^"]*"|[0-9]+|true|false),?$/' "$T/.context/kit.json")
