@@ -24,6 +24,8 @@ function Find-GitBash {
 }
 
 $script = (Join-Path $PSScriptRoot 'ctx') -replace '\\', '/'
+# Windows PowerShell 5.1 turns any stderr line of a native command into a terminating error under 'Stop'.
+$ErrorActionPreference = 'Continue'
 if ($null -ne $IsWindows -and -not $IsWindows) {
     & sh $script @args
     exit $LASTEXITCODE
